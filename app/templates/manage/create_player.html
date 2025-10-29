@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+
+{% block content %}
+    <h1 class="mt-4">Criar Jogador</h1>
+    
+    <div class="row">
+        <div class="col-md-12">
+            <p>Use este formulário para adicionar novos jogadores ao sistema, incluindo contas de teste ou administradores.</p>
+            
+            <form method="POST" action="{{ url_for('manage.create_player') }}">
+                {{ form.hidden_tag() }}
+                <div class="row">
+                    <h4 class="mt-4">Segurança e Login</h4>
+                    <div class="col-md-4">{{ wtf.form_field(form.username) }}</div>
+                    <div class="col-md-4">{{ wtf.form_field(form.password) }}</div>
+                    <div class="col-md-4">{{ wtf.form_field(form.regiao_id) }}</div>
+                    {{ wtf.form_field(form.is_admin) }}
+                <hr>
+                </div>
+                <hr>
+
+                <button type="submit" class="btn btn-primary">{{ form.submit.label }}</button>
+            </form>
+            
+            <p class="mt-4">
+                <a href="{{ url_for('manage.manage_dashboard') }}" class="btn btn-secondary">Voltar ao Painel</a>
+            </p>
+        </div>
+    </div>
+{% endblock %}

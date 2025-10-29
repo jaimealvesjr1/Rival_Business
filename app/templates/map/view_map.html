@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1 class="mt-4">Mapa de Regiões</h1>
+    
+    {# --- TELA DE STATUS DE VIAGEM (Se estiver em viagem) --- #}
+    {% if viagem_ativa %}
+        <div class="alert alert-warning">
+            <h4 class="alert-heading">Você está em Viagem!</h4>
+            {% set origem = regiao_atual.nome %}
+            {% set destino = viagem_ativa.destino.nome %}
+            
+            <p><strong>Rota:</strong> {{ origem }} <i class="fas fa-arrow-right"></i> {{ destino }}</p>
+            <p id="travel-countdown" data-seconds="{{ tempo_restante_segundos }}">
+                Tempo Restante: Calculando...
+            </p>
+            <p class="small">Sua região atual será atualizada automaticamente.</p>
+        </div>
+    {% else %}
+        {# --- TELA DE SELEÇÃO DE DESTINO (Se NÃO estiver em viagem) --- #}
+        <div class="alert alert-info">
+            Você está em: <strong>{{ regiao_atual.nome }}</strong>. Índice de Desenvolvimento: {{ "%.1f"|format(regiao_atual.indice_desenvolvimento) }} (Aceleração de Viagem: {{ (regiao_atual.indice_desenvolvimento)|round(0) }}%).
+        </div>
+    {% endif %}
+
+    <div class="row">
+        {% for opcao in opcoes_viagem %}
+            {% set destino = opcao.regiao %}
+            {% set is_current = destino.id == regiao_atual.id %}
+            
+            <div class="col-md-6 mb-4">
+                <div class="card h-100 {% if is_current %}border-success{% elif viagem_ativa %}border-secondary{% elif not opcao.pode_viajar %}border-danger{% endif %}">
+                    <div class="card-body">
+                        
+                        <h5 class="card-title">
+                            {{ destino.nome }}
+                            {% if is_current %}<span class="badge badge-success ml-2">Sua Localização</span>{% endif %}
+                            
+                            {# EXIBE DISTÂNCIA BRUTA SOMENTE SE NÃO ESTIVER VIAJANDO E NÃO FOR A ATUAL #}
+                            {% if not viagem_ativa and not is_current %}
+                                - {{ "%.0f"|format(opcao.distancia_bruta) }} Km de viagem
+                            {% endif %}
+                        </h5>
+                        
+                        {# DADOS DOS ÍNDICES DE DESENVOLVIMENTO/SAÚDE #}
+                        <ul class="list-group mb-4">
+                            <li class="list-group-item">
+                                <strong class="text-primary">Índice de Desenvolvimento:</strong> {{ "%.1f"|format(destino.indice_desenvolvimento) }}
+                            </li>
+                            <li class="list-group-item">
+                                <strong class="text-secondary">Índice de Saúde:</strong> {{ "%.0f"|format(destino.indice_saude) }}
+                            </li>
+                            <li class="list-group-item">
+                                <strong class="text-info">Índice de Educação:</strong> {{ "%.0f"|format(destino.indice_educacao) }}
+                            </li>
+                            <li class="list-group-item">
+                                <strong class="text-danger">Tributação Regional:</strong> {{ (destino.taxa_imposto_geral * 100)|round(0) }}%
+                            </li>
+                        </ul> 
+                        
+                        {% if not viagem_ativa and not is_current %}
+                        <div class="row">
+                            <div class="col-md-6 mb-4">
+                                Tempo de Viagem: <strong>{{ opcao.tempo_horas }} hora(s)</strong>
+                            </div>
+                            <div class="col-md-6 mb-4">
+                                Custo Total: <strong>{{ opcao.custo_total | currency_format('R$', '.') }}</strong>
+                            </div>
+                        </div>
+                            <form method="POST" action="{{ url_for('game_actions.travel') }}">
+                                <input type="hidden" name="destino_id" value="{{ destino.id }}">
+                                <button type="submit" 
+                                        class="btn btn-sm {% if opcao.pode_viajar %}btn-success{% else %}btn-danger{% endif %}"
+                                        {% if not opcao.pode_viajar %}disabled{% endif %}>
+                                    {% if opcao.pode_viajar %}
+                                        Viajar Agora
+                                    {% else %}
+                                        Renda Insuficiente
+                                    {% endif %}
+                                </button>
+                            </form>
+
+                        {% elif viagem_ativa %}
+                            {# Se ESTIVER viajando: Exibe status 'Já em Viagem' #}
+                            <button class="btn btn-sm btn-secondary" disabled>
+                                Já em Viagem...
+                            </button>
+
+                        {% elif is_current %}
+                            {# Se for a Região Atual: Botão desabilitado #}
+                            <button class="btn btn-sm btn-success" disabled>
+                                Você Está Aqui
+                            </button>
+                        {% endif %}
+
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            {# Se a lista de regiões estiver vazia #}
+            <div class="col-12"><p>Nenhuma região disponível no jogo.</p></div>
+        {% endfor %}
+    </div>
+{% endblock %}

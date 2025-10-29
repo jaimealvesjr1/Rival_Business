@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+
+{% block content %}
+    <h1 class="mt-4">Editar Empresa: {{ empresa.nome }}</h1>
+    
+    <div class="row">
+        <div class="col-md-12">
+            <p>Ajustando a empresa <strong>{{ empresa.id }} - {{ empresa.nome }}</strong> na localização <strong>{{ empresa.regiao.nome }}</strong>.</p>
+            
+            <form method="POST" action="{{ url_for('manage.edit_company', company_id=empresa.id) }}">
+                {{ form.hidden_tag() }}
+                <div class="row">
+                    <h4 class="mt-4">Dados da Empresa</h4>
+                    <div class="col-md-3">{{ wtf.form_field(form.nome) }}</div>
+                    <div class="col-md-2">{{ wtf.form_field(form.tipo) }}</div>
+                    <div class="col-md-3">{{ wtf.form_field(form.produto) }}</div>
+                    <div class="col-md-4">{{ wtf.form_field(form.proprietario_id) }}</div>
+                    <p class="small text-danger">Atenção: Mudar o Proprietário, Produto ou Tipo pode exigir limpar a coluna de Proprietário.</p>
+                <hr>
+                <h4 class="mt-4">Economia</h4>
+                    <div class="col-md-3">{{ wtf.form_field(form.taxa_lucro) }}</div>
+                    <div class="col-md-3">{{ wtf.form_field(form.dinheiro) }}</div>
+                </div>
+                
+                <button type="submit" class="btn btn-success mt-3">{{ form.submit.label }}</button>
+            </form>
+            
+            <p class="mt-4">
+                <a href="{{ url_for('manage.manage_dashboard') }}" class="btn btn-secondary btn-sm">Voltar</a>
+            </p>
+        </div>
+    </div>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+
+{% block content %}
+    <h1 class="mt-4">Editar Localização: {{ regiao.nome }}</h1>
+    
+    <div class="row">
+        <div class="col-md-12">
+            <p>Ajustando dados e índices de <strong>{{ regiao.id }} - {{ regiao.nome }}</strong>.</p>
+            
+            <form method="POST" action="{{ url_for('manage.edit_region', region_id=regiao.id) }}">
+                {{ form.hidden_tag() }}
+
+                <div class="row">
+                    <h4 class="mt-4">Dados no Mapa</h4>
+                    <div class="col-md-4">{{ wtf.form_field(form.nome) }}</div>
+                    <div class="col-md-4">{{ wtf.form_field(form.latitude) }}</div>
+                    <div class="col-md-4">{{ wtf.form_field(form.longitude) }}</div>
+                <hr>
+                    <h4 class="mt-4">Reservas</h4>
+                    <div class="col-md-3 text-warning">{{ wtf.form_field(form.reserva_ouro) }}</div>
+                    <div class="col-md-3 text-warning">{{ wtf.form_field(form.reserva_ouro_max) }}</div>
+                    <div class="col-md-3 texto-ferro">{{ wtf.form_field(form.reserva_ferro) }}</div>
+                    <div class="col-md-3 texto-ferro">{{ wtf.form_field(form.reserva_ferro_max) }}</div>
+                <hr>
+                    <h4 class="mt-4">Edição Manual de Índices</h4>
+                    <div class="col-md-3">{{ wtf.form_field(form.indice_desenvolvimento) }}</div>
+                    <div class="col-md-3">{{ wtf.form_field(form.taxa_imposto_geral) }}</div>
+                </div>
+                
+                <button type="submit" class="btn btn-success mt-3">{{ form.submit.label }}</button>
+            </form>
+            
+            <p class="mt-4">
+                <a href="{{ url_for('manage.manage_dashboard') }}" class="btn btn-secondary btn-sm">Voltar</a>
+            </p>
+        </div>
+    </div>
+{% endblock %}

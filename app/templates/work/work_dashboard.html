@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+
+{% block content %}
+    
+{% set custos = jogador.get_open_company_cost() %}
+{% set pode_abrir = jogador.dinheiro >= custos.money and jogador.gold >= custos.gold %}
+{% set limite_atingido = jogador.empresas_proprias | length >= jogador.get_max_empresas() %}
+{% set residente = regiao.id == jogador.regiao_residencia_id %}
+
+<h1 class="mt-4">Trabalho - {{ regiao.nome }}</h1>    
+
+<div class="card mb-4 bg-light">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-12">
+                <p><strong>Experiência de Trabalho:</strong>: {{ "%.0f"|format(jogador.experiencia_trabalho) }} XP</p>
+            </div>
+        </div>
+        <hr class="my-2">
+        <div class="row small">
+            <div class="col-md-3">
+                <strong class="text-primary">Índice de Desenvolvimento:</strong><br>{{ "%.0f"|format(regiao.indice_desenvolvimento) }} / 10
+            </div>
+            <div class="col-md-3">
+                <strong class="text-secondary">Índice de Saúde:</strong><br>{{ "%.0f"|format(regiao.indice_saude * 10) }} / 10
+            </div>
+            <div class="col-md-3">
+                <strong class="text-info">Índice de Educação:</strong><br>{{ "%.0f"|format(regiao.indice_educacao * 10) }} / 10
+            </div>
+            <div class="col-md-3">
+                <strong class="text-danger">Tributação na Localização:</strong><br>{{ (regiao.taxa_imposto_geral * 100)|round(0) }}%
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mt-4">Estatais</h2>
+    <div class="btn-group">
+        <a class="btn btn-success text-white">Trocar Experiências</a>
+    </div>
+</div>
+<div class="row">
+    {% for empresa in fabricas_estatais %}
+    {% if empresa.tipo == 'estatal' %}
+    {% set route_name = 'game_actions.mine_gold' if empresa.produto == 'ouro' else 'game_actions.mine_iron' %}
+    {% set reserva_para_uso = regiao.reserva_ouro if empresa.produto == 'ouro' else regiao.reserva_ferro %}
+    <div class="col-md-6 mb-4">
+        <div class="card text-center h-100">
+            <div class="card-header {% if empresa.produto == 'ouro' %}bg-warning{% elif empresa.produto =='ferro' %}bg-ferro text-white{% endif %}">
+                <strong>{{ empresa.nome }}</strong><br>
+                {% if empresa.produto == 'ouro' %}
+                <label for="nova_taxa_{{ empresa.id }}" class="mr-2 small">Reserva: {{ regiao.reserva_ouro | currency_format('', separator='.') }} G / {{ regiao.reserva_ouro_max | currency_format('', separator='.') }} G</label>
+                {% elif empresa.produto == 'ferro' %}
+                <label for="nova_taxa_{{ empresa.id }}" class="mr-2 small">Reserva: {{ regiao.reserva_ferro | currency_format('', separator='.') }} toneladas / {{ regiao.reserva_ferro_max | currency_format('', separator='.') }} toneladas</label>
+                {% endif %}
+            </div>
+            <div class="card-body small">
+                <p class="mb-2">Lucro da Empresa: <strong>{{ (empresa.taxa_lucro * 100)|round(0) }}%</strong></p>
+                
+                <form method="POST" action="{{ url_for(route_name, empresa_id=empresa.id) }}" class="form-inline d-flex justify-content-center">
+                    
+                    <div class="form-group mr-4">
+                        <select class="form-control" name="energia_gasta" id="energia_gasta_{{ empresa.id }}">
+                            {% for i in opcoes_energia %}
+                                <option value="{{ i }}">-{{ i }} E</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <button type="submit" 
+                            class="btn btn-primary"
+                            {% if not opcoes_energia or reserva_para_uso <= 0 %}disabled{% endif %}>
+                        Trabalhar
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% else %}
+        <div class="col-12"><p>Nenhuma estatal encontrada nesta localização.</p></div>
+    {% endfor %}
+</div>    
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-3 mt-4">Empresas Privadas</h2>
+    <div class="btn-group">
+        <a class="btn btn-success text-white mr-2">Procurar Empresa</a>
+        <a href="{{ url_for('game_actions.open_company_view') }}" class="btn btn-success 
+            {% if not pode_abrir or limite_atingido or not residente %}disabled{% endif %}" 
+            role="button">
+            Abrir Fábrica
+        </a>
+    </div>
+</div>
+
+{% if fabricas_privadas %}
+<div class="row mt-4">
+    {% for empresa in fabricas_privadas %}
+        {% set is_owner = empresa.proprietario_id == jogador.id %}
+        {% set reserva_para_uso = regiao.reserva_ouro if empresa.produto == 'ouro' else regiao.reserva_ferro %}
+        {% set route_name = 'game_actions.mine_gold' if empresa.produto == 'ouro' else 'game_actions.mine_iron' %}
+        <div class="col-md-6 mb-4">
+            <div class="card h-100 {% if is_owner %}border-primary{% else %}border-info{% endif %}">
+                <div class="card-header {% if is_owner %}bg-primary text-white{% else %}bg-info text-white{% endif %}">
+                    {{ empresa.nome }}
+                    {% if empresa.produto == 'ouro' %} Extração de Ouro Ltda.
+                    {% elif empresa.produto == 'ferro' %} Mineração Ltda.
+                    {% endif %}
+                    - Dono: {{ empresa.proprietario.username }}
+                </div>
+                <div class="card-body small">
+                {% if is_owner %}
+                    <p class="mb-1">Caixa da Empresa: {{ empresa.dinheiro | currency_format('R$', '.') }}</p>
+                    
+                    {# FORMULÁRIO DE AJUSTE DE TAXA (MANTIDO) #}
+                    <form method="POST" action="{{ url_for('game_actions.adjust_tax', empresa_id=empresa.id) }}" class="form-inline mt-2">
+                        <button type="submit" class="btn btn-sm btn-primary">Ajustar Taxa</button>
+                    </form>
+                    
+                    <hr class="my-3">
+                    
+                    {# FORMULÁRIO DE TRABALHO DO PROPRIETÁRIO #}
+                    <p class="mb-1">Trabalhar:</p>
+                    <form method="POST" action="{{ url_for(route_name, empresa_id=empresa.id) }}" class="form-inline mt-2">
+                        <div class="form-group mr-2">
+                            <select class="form-control form-control-sm" name="energia_gasta" id="energia_gasta_owner_{{ empresa.id }}">
+                                {% for i in opcoes_energia %}
+                                    <option value="{{ i }}">-{{ i }} E</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-sm btn-warning" 
+                            {% if not opcoes_energia or reserva_para_uso <= 0 %}disabled{% endif %}>
+                            Trabalhar
+                        </button>
+                    </form>
+                    
+                {% else %}
+                    {# BLOCO DO TRABALHADOR #}
+                    <p class="mb-1">Lucro da Empresa: <strong>{{ (empresa.taxa_lucro * 100)|round(0) }}%</strong></p>
+                    <p class="mb-1">Lucro do Trabalhador: <strong>{{ ((1 - empresa.taxa_lucro) * 100)|round(0) }}%</strong></p>
+                    
+                    <form method="POST" action="{{ url_for(route_name, empresa_id=empresa.id) }}" class="form-inline mt-3">
+                        <div class="form-group mr-2">
+                            <select class="form-control form-control-sm" name="energia_gasta" id="energia_gasta_private_{{ empresa.id }}">
+                                {% for i in opcoes_energia %}
+                                    <option value="{{ i }}">-{{ i }} E</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-sm btn-info" {% if not opcoes_energia or reserva_para_uso <= 0 %}disabled{% endif %}>
+                            Trabalhar
+                        </button>
+                    </form>
+                {% endif %}
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+{% else %}
+<p>Nenhuma empresa privada nesta localização.</p>
+{% endif %}
+<div class="alert alert-secondary small">
+    Requisitos para Abrir Empresa:
+    <ul class="mb-0">
+        <li>Nível Mínimo (Nv 5): <strong>{% if jogador.nivel >= 5 %}✅{% else %}❌{% endif %}</strong></li>
+        <li>Residência na Localização: <strong>{% if residente %}✅{% else %}❌{% endif %}</strong></li>
+        <li>Empresas (Limite {{ jogador.empresas_proprias | length }}/{{ jogador.get_max_empresas() }}): <strong>{% if limite_atingido %}❌{% else %}✅{% endif %}</strong></li>
+        <li>Custo: <strong>{{ custos.money | currency_format('R$') }}</strong> e <strong>{{ custos.gold | currency_format('', separator='') }} G</strong></li>
+    </ul>
+</div>
+{% endblock %}

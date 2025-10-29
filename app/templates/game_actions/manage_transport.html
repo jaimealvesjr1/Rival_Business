@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1 class="mt-4">Gestão de Transporte de Recursos</h1>
+
+    <div class="alert alert-info">
+        Armazém de destino: <strong>{{ jogador.armazem.proprietario.regiao_residencia.nome }}</strong>.
+        Total de Veículos Livres: <strong>{{ veiculos_disponiveis | length }} / {{ jogador.armazem.get_max_frota() }}</strong>.
+    </div>
+
+    {# --- LOOP SOBRE RECURSOS ESPERANDO TRANSPORTE --- #}
+    {% if recursos_por_regiao %}
+        {% for regiao_id, data in recursos_por_regiao.items() %}
+            <div class="card mb-4 border-warning">
+                <div class="card-header bg-warning text-dark">
+                    Recursos em Espera na Mina: <strong>{{ data.regiao_nome }}</strong>
+                </div>
+                <div class="card-body">
+                    {% for recurso in data.recursos %}
+                        <h4 class="mb-3">{{ recurso.tipo | capitalize }}: {{ recurso.quantidade | int }} Toneladas</h4>
+                        <p class="small text-danger">Prazo para Agendar: 
+                            <strong id="expiration-countdown-{{ recurso.id }}" 
+                                    data-seconds="{{ recurso.tempo_restante_exp }}">
+                                Calculando...
+                            </strong>
+                        </p>
+                        
+                        <form method="POST" action="{{ url_for('game_actions.start_transport') }}" class="mb-4">
+                            <input type="hidden" name="recurso_mina_id" value="{{ recurso.id }}">
+                            <input type="hidden" name="quantidade_total" value="{{ recurso.quantidade }}">
+                            
+                            <table class="table table-sm table-striped small">
+                                <thead>
+                                    <tr>
+                                        <th>Veículo</th>
+                                        <th>Capacidade</th>
+                                        <th>Viagens (Para {{ recurso.quantidade | int }}t)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {# Loop de Atribuição de Veículos #}
+                                    {% for veiculo in veiculos_disponiveis %}
+                                        {% set viagens_necessarias = (recurso.quantidade / veiculo.capacidade) | round(0, 'ceil') | int %}
+                                        
+                                        <tr>
+                                            <td>{{ veiculo.nome }} ({{ veiculo.capacidade | int }}t)</td>
+                                            <td>{{ veiculo.capacidade | int }} ton</td>
+                                            <td>
+                                                <input type="number" 
+                                                    name="viagens_{{ veiculo.id }}" 
+                                                    min="0" 
+                                                    max="{{ viagens_necessarias }}" 
+                                                    value="0" 
+                                                    class="form-control form-control-sm"
+                                                    style="width: 80px;"
+                                                    data-capacidade="{{ veiculo.capacidade }}"
+                                                    data-max="{{ viagens_necessarias }}">
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+
+                            <button type="submit" 
+                                    class="btn btn-primary btn-sm btn-block"
+                                    onclick="return validateTransport(this.form, {{ recurso.quantidade }});"
+                                    {% if not veiculos_disponiveis %}disabled{% endif %}>
+                                Iniciar Transporte Planejado
+                            </button>
+                        </form>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="alert alert-success">Não há recursos esperando por transporte.</div>
+    {% endif %}
+
+{% endblock %}

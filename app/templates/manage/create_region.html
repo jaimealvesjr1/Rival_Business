@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+
+{% block content %}
+    <h1 class="mt-4">Criar Nova Localização</h1>
+    
+    <div class="row">
+        <div class="col-md-12">
+            <p>Utilize este formulário para adicionar novas regiões ao mapa do jogo.</p>
+            <form method="POST" action="{{ url_for('manage.create_region') }}">
+                {{ form.hidden_tag() }}
+                <div class="row">
+                    <h4 class="mt-4">Dados no Mapa</h4>
+                    <div class="col-md-4">{{ wtf.form_field(form.nome) }}</div>
+                    <div class="col-md-4">{{ wtf.form_field(form.latitude) }}</div>
+                    <div class="col-md-4">{{ wtf.form_field(form.longitude) }}</div>
+                <hr>
+                    <h4 class="mt-4">Reservas</h4>
+                    <div class="col-md-6 text-warning">{{ wtf.form_field(form.reserva_ouro_max) }}</div>
+                    <div class="col-md-6 texto-ferro">{{ wtf.form_field(form.reserva_ferro_max) }}</div>
+                </div>
+                <hr>
+                <button type="submit" class="btn btn-primary">{{ form.submit.label }}</button>
+            </form>
+            <p class="mt-4">
+                <a href="{{ url_for('manage.manage_dashboard') }}" class="btn btn-secondary">Voltar ao Painel</a>
+            </p>
+        </div>
+    </div>
+{% endblock %}

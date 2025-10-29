@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="mt-4">Perfil de {{ jogador.username }}</h1>
+
+<div class="row">
+    <div class="col-md-8">
+        <h3>Estatísticas Principais</h3>
+        <ul class="list-group mb-4">
+            <li class="list-group-item">
+                <strong>Residência:</strong> 
+                {% if jogador.regiao_residencia %}{{ jogador.regiao_residencia.nome }}{% else %}N/A{% endif %}
+            </li>
+            <li class="list-group-item"><strong>Nível Geral:</strong> {{ jogador.nivel }}</li>
+            <li class="list-group-item">
+                <strong>Experiência Geral:</strong> 
+                    {{ jogador.experiencia | currency_format('', separator='.') }} / 
+                    {{ jogador.get_xp_needed_for_next_level() | currency_format('', separator='.') }}                
+                <small>(XP total para o Nv. {{ jogador.nivel + 1 }})</small>
+            </li>
+            <li class="list-group-item">
+                <strong>Experiência de Trabalho:</strong> {{ "%.0f"|format(jogador.experiencia_trabalho) }}
+            </li>
+            <li class="list-group-item"><strong>Energia:</strong> {{ jogador.energia | int }} / 200
+            <li class="list-group-item"><strong>Dinheiro:</strong> {{ jogador.dinheiro | currency_format('R$', '.') }}</li>
+            <li class="list-group-item">
+                <strong>Gold: </strong>{{ "%.2f"|format(jogador.gold) }} Kg
+            </li>
+        </ul>
+    </div>
+    <div class="col-md-4">
+        <h3>Localização Atual:</h3>
+        <ul class="list-group mb-4">
+            <li class="list-group-item">
+                {% if jogador.regiao_atual.id != jogador.regiao_residencia_id %}
+                    {% if pedido_ativo and pedido_ativo.regiao_destino_id == jogador.regiao_atual.id %}
+                        <div class="alert alert-info py-2 mt-2 text-center">
+                            <strong>Pedido de Residência em:</strong><br>
+                            {{ jogador.regiao_atual.nome }}
+                            <p class="mb-1 small" id="residency-countdown" data-seconds="{{ tempo_restante_residencia }}">Calculando...</p>
+                            <form method="POST" action="{{ url_for('game_actions.cancel_residency') }}" class="d-inline ml-3">
+                                <button type="submit" class="btn btn-sm btn-danger">Cancelar</button>
+                            </form>
+                        </div>
+                    {% else %}
+                        {% if not pedido_ativo and not viagem_ativa %}
+                        <div class="alert alert-info py-2 mt-2 text-center">
+                            <strong>{{ jogador.regiao_atual.nome }}<br></strong>
+                            Você não tem residência aqui.<br>
+                            <form class="mt-2" method="POST" action="{{ url_for('game_actions.request_residency', regiao_id=jogador.regiao_atual.id) }}">
+                                <button type="submit" class="btn btn-success btn-sm">Pedir Residência</button>
+                            </form>
+                        </div>
+                        {% elif pedido_ativo %}
+                        <div class="alert alert-warning py-2 mt-2 text-center">
+                            <strong>{{ jogador.regiao_atual.nome }}<br></strong>
+                            Pedido de residência já ativo em:<br>
+                            <strong>{{ pedido_ativo.regiao_destino.nome }}<br></strong>
+                        </div>
+                        {% endif %}
+                    {% endif %}
+                {% else %}
+                    <div class="alert alert-success py-2 mt-2 text-center">
+                        <strong>{{ jogador.regiao_atual.nome }}<br></strong>
+                        Sua residência.
+                    </div>
+                {% endif %}
+            </li>
+            <li class="list-group-item">
+                <strong class="text-primary">Índice de Desenvolvimento:</strong> {{ "%.1f"|format(jogador.regiao_atual.indice_desenvolvimento) }} / 10
+            </li>
+            <li class="list-group-item">
+                <strong class="text-secondary">Índice de Saúde:</strong> {{ "%.0f"|format(jogador.regiao_atual.indice_saude * 10) }} / 10
+            </li>
+            <li class="list-group-item">
+                <strong class="text-info">Índice de Educação:</strong> {{ "%.0f"|format(jogador.regiao_atual.indice_educacao * 10) }} / 10
+            </li>
+            <li class="list-group-item">
+                <strong class="text-danger">Tributação na Localização:</strong> {{ (jogador.regiao_atual.taxa_imposto_geral * 100)|round(0) }}%
+            </li>
+        </ul>
+    </div>
+</div>
+
+<div class="row">
+<h2 class="mt-4">Melhorias de Habilidades</h2>
+
+    {% set skills = [
+        ('educacao', 'Educação'), 
+        ('filantropia', 'Filantropia'), 
+        ('saude', 'Saúde')
+    ] %}
+    
+    {% set skill_map = dict(skills) %}
+    
+    {% set skill_name_display = skill_map[treino_ativo.habilidade] if treino_ativo else '' %}
+    
+    {% set training_in_progress = treino_ativo is not none %}
+
+    {% for skill_key, skill_name in skills %}
+        {% set current_level = jogador['habilidade_' + skill_key] %}
+        {% set next_level_cost = jogador.get_skill_cost(skill_key, current_level) %}
+
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-primary text-white">
+                {{ skill_name }} - Nível {{ "%.0f"|format(current_level) }}
+            </div>
+            <div class="card-body small">
+                
+                {% if treino_ativo and treino_ativo.habilidade == skill_key %}
+                    
+                    <div class="alert alert-info text-center" 
+                            id="countdown-{{ skill_key }}" 
+                            data-seconds="{{ tempo_restante_segundos }}">
+                        Treinando...
+                    </div>
+                    <p class="text-center small">Conclusão: {{ treino_ativo.data_fim | datetime_local }}</p>
+                    
+                {% elif treino_ativo %}
+                    
+                    <div class="alert alert-warning">
+                        Você já está treinando {{ skill_name_display }}.
+                    </div>
+                    
+                {% else %}
+                    <p class="mb-1"><strong>Melhoria:</strong> Nível {{ "%.0f"|format(current_level + 1) }}</p>
+                    <p class="mb-1"><strong>Custo:</strong> {{ next_level_cost.custo | currency_format('R$', '.') }}</p>
+                    <p class="mb-1"><strong>Tempo:</strong> {{ next_level_cost.tempo_minutos }} minutos</p>
+                    <hr class="my-2">
+                    <form method="POST" action="{{ url_for('skill_development.train_skill', skill_key=skill_key) }}">
+                        <button type="submit" 
+                                class="btn btn-sm btn-success" 
+                                {% if jogador.dinheiro < next_level_cost.custo %}disabled{% endif %}>
+                            Treinar {{ skill_name }}
+                        </button>
+                    </form>
+                    
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="row">
+<h2 class="mt-4">Ações Recentes</h2>
+    <div class="col-md-12">
+        <ul class="list-group mb-4">
+            {% set acoes_recentes = jogador.historico_acoes[:8] %} 
+            
+            {% if acoes_recentes %}
+                {% for acao in acoes_recentes %}
+                    {% set cor = 'text-success' if acao.dinheiro_delta >= 0 or acao.gold_delta >= 0 else 'text-danger' %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        
+                        <span class="{{ cor }} small">
+                            {{ acao.tipo_acao | action_format }}
+                        </span>
+                        <span class="flex-grow-1 ml-3 mr-3">{{ acao.descricao }}</span>
+                        <span class="small text-muted">{{ acao.timestamp | datetime_local }}</span> 
+                    </li>
+                {% endfor %}
+            {% else %}
+                <li class="list-group-item">Nenhuma ação registrada ainda.</li>
+            {% endif %}
+        </ul>
+    </div>
+</div>
+    
+{% endblock %}

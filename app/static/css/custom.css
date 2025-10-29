@@ -1,0 +1,36 @@
+body {
+  background: linear-gradient(to bottom right, #f8f9fa, #e2e6ea);
+  color: var(--cor-texto);
+  min-height: 100vh;
+}
+
+main {
+  padding: 40px 20px;
+}
+
+footer {
+  text-align: center;
+  font-size: 0.8rem;
+  color: #6c757d;
+  padding: 1rem;
+}
+
+.navbar {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  z-index: 1000;
+}
+
+.flash-messages {
+  margin-top: 20px;
+}
+
+.texto-ferro {
+  color: #922d2d;
+}
+
+.bg-ferro {
+  background-color: #922d2d !important;
+}
+

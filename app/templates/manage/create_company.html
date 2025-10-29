@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+
+{% block content %}
+    <h1 class="mt-4">Criar Empresa Privada</h1>
+    
+    <div class="row">
+        <div class="col-md-12">
+            <p>Use este formulário para adicionar empresas privadas diretamente ao jogo e definir o proprietário e a localização.</p>
+            
+            <form method="POST" action="{{ url_for('manage.create_company') }}">
+                {{ form.hidden_tag() }}
+                <div class="row">
+                    <h4 class="mt-4">Dados da Empresa</h4>
+                    <div class="col-md-3">{{ wtf.form_field(form.nome) }}</div>
+                    <div class="col-md-3">{{ wtf.form_field(form.produto) }}</div>
+                    <div class="col-md-3">{{ wtf.form_field(form.regiao_id) }}</div>
+                    <div class="col-md-3">{{ wtf.form_field(form.proprietario_id) }}</div>
+                <hr>
+                <h4 class="mt-4">Economia</h4>
+                    <div class="col-md-3">{{ wtf.form_field(form.taxa_lucro) }}
+                    {% for error in form.taxa_lucro.errors %}
+                        <small class="text-danger">{{ error }}</small>
+                    {% endfor %}
+                    </div>
+                <hr>
+                </div>
+                                
+                <button type="submit" class="btn btn-primary">{{ form.submit.label }}</button>
+            </form>
+            
+            <p class="mt-4">
+                <a href="{{ url_for('manage.manage_dashboard') }}" class="btn btn-secondary">Voltar ao Painel</a>
+            </p>
+        </div>
+    </div>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+
+{% block content %}
+    <h1 class="mt-4">Editar Jogador: {{ jogador.username }}</h1>
+    
+    <div class="row">
+        <div class="col-md-12">
+            <p>Ajustando dados e recursos de <strong>{{ jogador.id }} - {{ jogador.username }}</strong>.</p>
+            
+            <form method="POST" action="{{ url_for('manage.edit_player', player_id=jogador.id) }}">
+                {{ form.hidden_tag() }}
+                <div class="row">
+                    <h4 class="mt-4">Segurança e Login</h4>
+                    <div class="col-md-6">{{ wtf.form_field(form.username) }}</div>
+                    <div class="col-md-6">{{ wtf.form_field(form.new_password) }}</div>
+                    {{ wtf.form_field(form.is_admin) }}
+                <hr>
+                    <h4 class="mt-4">Recursos e Status</h4>
+                    <div class="col-md-1">{{ wtf.form_field(form.nivel) }}</div>
+                    <div class="col-md-2">{{ wtf.form_field(form.dinheiro) }}</div>
+                    <div class="col-md-2">{{ wtf.form_field(form.gold) }}</div>
+                    <div class="col-md-2">{{ wtf.form_field(form.energia) }}</div>
+                    <div class="col-md-2">{{ wtf.form_field(form.experiencia) }}</div>
+                    <div class="col-md-3">{{ wtf.form_field(form.experiencia_trabalho) }}</div>
+                <hr>
+                    <h4 class="mt-4">Localização</h4>
+                    <div class="col-md-6">{{ wtf.form_field(form.regiao_residencia_id) }}</div>
+                    <div class="col-md-6">{{ wtf.form_field(form.regiao_atual_id) }}</div>
+                </div>
+                <button type="submit" class="btn btn-success mt-3">{{ form.submit.label }}</button>
+            </form>
+            
+            <p class="mt-4">
+                <a href="{{ url_for('manage.manage_dashboard') }}" class="btn btn-secondary btn-sm">Voltar</a>
+            </p>
+        </div>
+    </div>
+{% endblock %}
