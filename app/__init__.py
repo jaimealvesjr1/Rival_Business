@@ -36,7 +36,7 @@ def create_app(config_class=Config):
     migrate.init_app(app, db)
     bootstrap.init_app(app)
 
-    from app.background_tasks import run_core_status_updates, replenish_resources
+    from app.background_tasks import run_core_status_updates, replenish_resources, check_vehicle_validity
 
     scheduler.init_app(app)
     scheduler.start()
@@ -57,6 +57,14 @@ def create_app(config_class=Config):
                           trigger='interval', 
                           seconds=60, # Frequência de 1 minuto
                           name='Atualização de Status Central (60s)')
+    
+    if not scheduler.get_job('vehicle_validity_check'):
+        scheduler.add_job(id='vehicle_validity_check', 
+                          func=check_vehicle_validity, 
+                          args=[app],
+                          trigger='interval', 
+                          hours=1, # 1 hora para testes
+                          name='Checagem de Validade de Veículos')
         
     ACAO_MAP = {
         'MINERACAO': 'Mineração',
@@ -65,6 +73,12 @@ def create_app(config_class=Config):
         'VIAGEM': 'Viagem',
         'RESIDENCIA_PEDIDO': 'Solicitação de Residência',
         'RESIDENCIA_CANCEL': 'Residência Cancelada',
+        'FRETE_COBRADO': 'Custo de Frete',
+        'VEICULO_COMPRA': 'Compra de Veículo',
+        'VEICULO_VENCIDO': 'Veículo Expirado',
+        'ARMAZEM_UPGRADE': 'Melhoria de Armazém',
+        'TRANSPORTE_INICIO': 'Logística Agendada',
+        'TRANSPORTE_CONCLUIDO': 'Transporte Concluído',
     }
 
     @app.template_filter('action_format')

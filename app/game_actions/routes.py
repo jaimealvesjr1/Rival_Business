@@ -27,12 +27,15 @@ FERRO_POR_ENERGIA = 1.5             # Ex: 15 ferro para 10 E (1.5 por E)
 
 FATOR_REDUCAO_DINHEIRO = 0.1
 
+TEMPO_BASE_ESPERA_MIN = 360
+TEMPO_ESPERA_RESIDENCIA_HORAS = 6
+
 VELOCIDADE_BASE_KMH = 100
 HORA_POR_KM = 100 
 CUSTO_POR_KM = 5.0
 TEMPO_TRANSPORTE_LOCAL_MIN = 5
+CUSTO_MINIMO_FRETE_LOCAL = 500
 TEMPO_LIMITE_PLANEJAMENTO_MIN = 15
-TEMPO_ESPERA_RESIDENCIA_HORAS = 6
 
 def get_money_production(xp_trabalho):
     """Calcula o valor total em dinheiro gerado pela ação, escalado pela XP."""    
@@ -40,6 +43,27 @@ def get_money_production(xp_trabalho):
     multiplicador = (1 + (xp_trabalho / XP_MAX_LEVEL) * 59.2) # Ajuste linear simplificado
     
     return base_production * multiplicador
+
+def calculate_player_factors(jogador):
+    """Calcula os fatores de bônus/desconto com base nas habilidades do jogador."""
+    
+    # SAÚDE: Desconto no Gasto de Energia (Max 80%)
+    saude_level = jogador.habilidade_saude
+    desconto_energia = min(0.80, saude_level * 0.01) 
+    
+    # EDUCAÇÃO: Bônus no Ganho de XP Geral (Max 80%)
+    educacao_level = jogador.habilidade_educacao
+    bonus_xp_geral = min(0.80, educacao_level * 0.01)
+    
+    # FILANTROPIA: Desconto no Imposto (Max 50%)
+    filantropia_level = jogador.habilidade_filantropia
+    desconto_imposto = min(0.50, filantropia_level * 0.01)
+    
+    return {
+        'desconto_energia': desconto_energia,
+        'multiplicador_xp_educacao': 1.0 + bonus_xp_geral,
+        'desconto_imposto': desconto_imposto
+    }
 
 @bp.route('/travel', methods=['POST'])
 @login_required
@@ -108,6 +132,14 @@ def travel():
 def request_residency(regiao_id):
     jogador = Jogador.query.get(current_user.id)
     regiao_destino = Regiao.query.get(regiao_id)
+
+    total_jogadores = Jogador.query.count()
+    limite_maximo_residentes = ceil(total_jogadores * 0.50)
+    residentes_atuais = regiao_destino.residentes.count()
+
+    filantropia_regional = regiao_destino.indice_filantropia
+    desconto_percentual = min(0.50, filantropia_regional)
+    tempo_ajustado_min = TEMPO_BASE_ESPERA_MIN * (1.0 - desconto_percentual)
     
     # Verificação 1: Destino é válido e diferente da residência atual
     if not regiao_destino or regiao_destino.id == jogador.regiao_residencia_id:
@@ -118,9 +150,13 @@ def request_residency(regiao_id):
     if PedidoResidencia.query.filter_by(jogador_id=jogador.id).first():
         flash("Você já tem um pedido de residência ativo.", 'warning')
         return redirect(url_for('map.view_map'))
+    
+    if residentes_atuais >= limite_maximo_residentes:
+        flash(f"O limite de residência para esta região ({limite_maximo_residentes}) foi atingido. Tente outra região.", 'danger')
+        return redirect(url_for('profile.view_profile'))
         
     try:
-        data_aprovacao = datetime.utcnow() + timedelta(hours=TEMPO_ESPERA_RESIDENCIA_HORAS)
+        data_aprovacao = datetime.utcnow() + timedelta(minutes=tempo_ajustado_min)
         
         pedido = PedidoResidencia(
             jogador_id=jogador.id,
@@ -246,7 +282,6 @@ def mine_gold(empresa_id):
     jogador = Jogador.query.get(current_user.id)
     empresa = Empresa.query.get(empresa_id)
     regiao = jogador.regiao_atual
-    multiplicador_xp_educacao = 1.0 + regiao.indice_educacao
     
     if not regiao or not empresa or empresa.regiao_id != regiao.id:
         flash("Empresa inválida ou não está na sua região atual.", 'danger')
@@ -259,6 +294,29 @@ def mine_gold(empresa_id):
     except ValueError:
         flash("Valor de energia inválido.", 'danger')
         return redirect(url_for('profile.view_profile'))
+    
+    # --- 1. CALCULAR FATORES DE HABILIDADE (CORREÇÃO DE ESCOPO) ---
+    fatores = calculate_player_factors(jogador) # <<< CHAMADA OBRIGATÓRIA AQUI!
+    
+    desconto_energia = fatores['desconto_energia']
+    multiplicador_xp_educacao = fatores['multiplicador_xp_educacao']
+    desconto_imposto = fatores['desconto_imposto']
+
+    # --- 2. APLICAÇÃO DOS BÔNUS/DESCONTOS ---
+    
+    # A. Energia Gasta Efetiva (USANDO SAÚDE)
+    energia_gasta_real = ceil(energia_gasta * (1.0 - desconto_energia)) 
+    
+    # B. Imposto Efetivo (USANDO FILANTROPIA)
+    taxa_imposto_regional = regiao.taxa_imposto_geral
+    taxa_imposto_efetiva = taxa_imposto_regional * (1.0 - desconto_imposto) # <-- IMPOSTO MENOR
+    
+    # C. CÁLCULO DE GANHO (MANTIDO)
+    dinheiro_total_gerado = get_money_production(jogador.experiencia_trabalho) * (energia_gasta / 10.0) * FATOR_REDUCAO_DINHEIRO
+    
+    # D. DISTRIBUIÇÃO USANDO TAXA EFETIVA
+    valor_imposto_dinheiro = dinheiro_total_gerado * taxa_imposto_efetiva 
+    valor_imposto_gold = OURO_POR_ENERGIA * energia_gasta * taxa_imposto_efetiva
         
     # --- VERIFICAÇÕES DE PRÉ-REQUISITOS (Energia, Viagem, Reserva) ---
     
@@ -379,6 +437,16 @@ def mine_iron(empresa_id):
         flash("Valor de energia inválido.", 'danger')
         return redirect(url_for('work.work_dashboard'))
     
+    # --- 1. CALCULAR FATORES DE HABILIDADE ---
+    fatores = calculate_player_factors(jogador)
+    desconto_energia = fatores['desconto_energia']
+    multiplicador_xp_educacao = fatores['multiplicador_xp_educacao']
+
+    # --- 2. APLICAÇÃO DOS BÔNUS/DESCONTOS ---
+    
+    # A. Energia Gasta Efetiva (USANDO SAÚDE)
+    energia_gasta_real = ceil(energia_gasta * (1.0 - desconto_energia))
+    
     # --- VERIFICAÇÕES DE PRÉ-REQUISITOS ---
     
     if ViagemAtiva.query.filter_by(jogador_id=jogador.id).first():
@@ -407,8 +475,8 @@ def mine_iron(empresa_id):
         ferro_obtido = FERRO_POR_ENERGIA * energia_gasta
         
         xp_trabalho_ganho_final = XP_TRABALHO_POR_ENERGIA * energia_gasta
-        multiplicador_xp_educacao = 1.0 + regiao.indice_educacao
-        xp_geral_ganho_final = XP_GERAL_POR_ENERGIA * energia_gasta * multiplicador_xp_educacao
+        xp_geral_ganho_base = XP_GERAL_POR_ENERGIA * energia_gasta
+        xp_geral_ganho_final = xp_geral_ganho_base * multiplicador_xp_educacao
 
         # 1. ESGOOTAMENTO: Reduz a reserva regional
         esgotamento_total = ESGOTAMENTO_POR_ENERGIA * energia_gasta
@@ -432,7 +500,7 @@ def mine_iron(empresa_id):
         recurso_mina.quantidade += ferro_obtido # Adiciona o ferro obtido
 
         # 3. ATUALIZAÇÃO DO JOGADOR (Gasto e XP)
-        jogador.energia -= energia_gasta
+        jogador.energia -= energia_gasta_real # <- USA A ENERGIA REAL
         jogador.experiencia_trabalho += xp_trabalho_ganho_final
         jogador.experiencia += xp_geral_ganho_final
         jogador.last_status_update = datetime.utcnow()
@@ -571,40 +639,46 @@ def start_transport():
             tempo_minutos_base = ceil(tempo_horas_base * 60)
             tempo_minutos_base = max(TEMPO_TRANSPORTE_LOCAL_MIN, tempo_minutos_base)
 
-        # 3. INICIALIZAÇÃO DE RASTREAMENTO E CUSTOS
+        # 3. INICIALIZAÇÃO DE RASTREAMENTO E CUSTOS (CORRIGIDA)
         total_viagens_agendadas = 0
         recurso_coberto = 0.0
         custo_frete_total = 0.0
         
         transporte_jobs = [] 
-        ultima_data_fim = datetime.utcnow()
-        veiculo_disponivel_em = {v.id: datetime.utcnow() for v in armazem.frota.all()} # Map {id: time_ready}
+        ultima_data_fim = datetime.utcnow() # CORRIGIDO: Inicializa com datetime.utcnow
+        veiculo_disponivel_em = {v.id: datetime.utcnow() for v in armazem.frota.all()}
 
         # 4. ITERAÇÃO MESTRA: CALCULA CUSTO, TEMPO SEQUENCIAL E CRIA JOBS
         
         for key, viagens_value in request.form.items():
             if key.startswith('viagens_') and int(viagens_value) > 0:
-                viagens_requeridas = int(viagens_value)
                 veiculo_id = int(key.split('_')[1])
+                viagens_requeridas = int(viagens_value)
                 veiculo = Veiculo.query.get(veiculo_id)
 
                 if veiculo and not veiculo.transporte_atual:
                     
-                    # 4a. CÁLCULO DE TEMPO AJUSTADO AO VEÍCULO
-                    tempo_total_por_viagem = ceil(tempo_minutos_base * (1.0 / veiculo.velocidade))
+                    # 4a. CÁLCULO DE CUSTO PARA ESTE VEÍCULO
+                    if distancia_km < 1.0:
+                        custo_por_viagem_unitario = CUSTO_MINIMO_FRETE_LOCAL 
+                    else:
+                        # Frete = Custo por ton/km * Capacidade * Distância Ida
+                        custo_por_viagem_unitario = veiculo.custo_tonelada_km * veiculo.capacidade * distancia_km 
+                        
+                    custo_frete_total += custo_por_viagem_unitario * viagens_requeridas # <-- ACUMULA CUSTO TOTAL
                     
-                    # 4b. CÁLCULO DE CUSTO (Custo por ton/km * Capacidade * Distância Ida * Viagens)
-                    custo_por_viagem = veiculo.custo_tonelada_km * veiculo.capacidade * distancia_km 
-                    custo_frete_total += custo_por_viagem * viagens_requeridas
-
+                    # 4b. CÁLCULO DE TEMPO AJUSTADO AO VEÍCULO
+                    tempo_ajuste_velocidade = 1.0 / veiculo.velocidade 
+                    tempo_total_por_viagem = ceil(tempo_minutos_base * tempo_ajuste_velocidade)
+                    tempo_total_por_viagem = max(TEMPO_TRANSPORTE_LOCAL_MIN, tempo_total_por_viagem)
+                    
                     # 4c. SEQUENCIAMENTO E CRIAÇÃO
-                    tempo_inicio = veiculo_disponivel_em[veiculo_id] # Pega o tempo que o veículo está livre
+                    tempo_inicio = veiculo_disponivel_em[veiculo_id] # Pega o tempo que o veículo está livre (datetime)
                     
                     for i in range(viagens_requeridas):
                         
                         data_fim_viagem = tempo_inicio + timedelta(minutes=tempo_total_por_viagem)
                         
-                        # Atualiza o rastreamento para a próxima viagem
                         tempo_inicio = data_fim_viagem 
                         
                         quantidade_por_viagem = veiculo.capacidade
@@ -622,7 +696,7 @@ def start_transport():
                         if data_fim_viagem > ultima_data_fim:
                              ultima_data_fim = data_fim_viagem
                     
-                    # Salva a ÚLTIMA data de fim deste veículo no rastreamento
+                    # 4.3 Salva a ÚLTIMA data de fim DESTE VEÍCULO no rastreamento
                     veiculo_disponivel_em[veiculo_id] = tempo_inicio 
 
         # 5. VERIFICAÇÃO DE FUNDOS E SUBTRAÇÃO
@@ -645,8 +719,24 @@ def start_transport():
              flash(f"AVISO: {recurso_restante:.0f}t permanecerão na mina. Frete cobrado.", 'warning')
         else:
              db.session.delete(recurso_mina) 
-             
+        
+
+        # --- REGISTRO NO HISTÓRICO ---
+        descricao_acao = (
+            f"Frete agendado para {total_viagens_agendadas} viagens. Custo: {format_currency_python(custo_frete_total)}."
+        )
+        hist = HistoricoAcao(
+            jogador_id=jogador.id,
+            tipo_acao='FRETE_COBRADO',
+            descricao=descricao_acao,
+            dinheiro_delta=-custo_frete_total, 
+            gold_delta=0.0
+        )
+        # -----------------------------
+
         db.session.add_all(transporte_jobs)
+        db.session.add(hist)
+
         db.session.commit()
         
         # 7. FEEDBACK FINAL

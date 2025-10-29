@@ -4,7 +4,7 @@ from datetime import timedelta, datetime
 class Config:
     # Chave Secreta
     # ESSENCIAL para segurança do Flask (sessões, forms, etc.)
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'voce-nunca-vai-adivinhar-essa-chave-secreta-muito-dificil'
+    SECRET_KEY = os.environ.get('SECRET_KEY') or 'rival-business-mr-james'
     
     # Configuração do Banco de Dados
     # Usaremos SQLite para começar (um único arquivo)

@@ -50,7 +50,7 @@
             <div class="card-header {% if empresa.produto == 'ouro' %}bg-warning{% elif empresa.produto =='ferro' %}bg-ferro text-white{% endif %}">
                 <strong>{{ empresa.nome }}</strong><br>
                 {% if empresa.produto == 'ouro' %}
-                <label for="nova_taxa_{{ empresa.id }}" class="mr-2 small">Reserva: {{ regiao.reserva_ouro | currency_format('', separator='.') }} G / {{ regiao.reserva_ouro_max | currency_format('', separator='.') }} G</label>
+                <label for="nova_taxa_{{ empresa.id }}" class="mr-2 small">Reserva: {{ regiao.reserva_ouro | currency_format('', separator='.') }} Kg / {{ regiao.reserva_ouro_max | currency_format('', separator='.') }} Kg</label>
                 {% elif empresa.produto == 'ferro' %}
                 <label for="nova_taxa_{{ empresa.id }}" class="mr-2 small">Reserva: {{ regiao.reserva_ferro | currency_format('', separator='.') }} toneladas / {{ regiao.reserva_ferro_max | currency_format('', separator='.') }} toneladas</label>
                 {% endif %}

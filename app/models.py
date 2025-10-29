@@ -137,6 +137,40 @@ class Jogador(db.Model, UserMixin):
         cost_money = round(base_money * multiplicador_aumento, 2)
         
         return {'gold': cost_gold, 'money': cost_money}
+    
+    def get_skill_upgrade_info(self, skill_key): # Novo nome de função para ser mais explícito
+        """Retorna o custo, tempo e efeito para o próximo nível da habilidade."""
+        
+        current_level = getattr(self, f'habilidade_{skill_key}')
+        
+        # 1. Cálculo de Custo/Tempo (Mantido)
+        base_money = 1000.00
+        base_gold = 5.0 # Suponhamos que o Gold é a moeda de custo para habilidades
+        base_time_minutes = 10 
+        
+        multiplicador = 1.2 ** current_level # Usa o nível atual (float)
+        
+        custo_money = round(base_money * multiplicador, 0) # Arredondado para R$
+        custo_gold = round(base_gold * multiplicador, 2)
+        tempo_minutos = round(base_time_minutes * multiplicador)
+
+        # 2. Determinar o Efeito Visual
+        if skill_key == 'saude':
+            efeito = "+1% Desconto Energia (Máx 80%)"
+        elif skill_key == 'educacao':
+            efeito = "+1% Bônus XP Geral (Máx 80%)"
+        elif skill_key == 'filantropia':
+            efeito = "+1% Desconto Imposto (Máx 50%)"
+        else:
+            efeito = "Efeito não definido"
+            
+        return {
+            'next_level': current_level + 1.0,
+            'money': custo_money, 
+            'gold': custo_gold, 
+            'time': tempo_minutos,
+            'effect': efeito
+        }
 
     # Métodos para senha (usaremos Flask-Bcrypt)
     def set_password(self, password):

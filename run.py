@@ -54,10 +54,10 @@ if __name__ == '__main__':
             print(f"SUCESSO: {novos_tipos_criados} Tipos de Veículos adicionados.")
 
         # 3. CONSULTA CRÍTICA: Carrega o tipo de veículo inicial APÓS o commit
-        caminhao_3_4_tipo = TipoVeiculo.query.filter_by(tipo_veiculo='caminhao_3_4').first()
+        rodotrem_tipo = TipoVeiculo.query.filter_by(tipo_veiculo='rodotrem').first()
         
-        if not caminhao_3_4_tipo:
-            print("ERRO CRÍTICO: TipoVeiculo 'caminhao_3_4' não encontrado. O Armazém inicial FALHARÁ.")
+        if not rodotrem_tipo:
+            print("ERRO CRÍTICO: TipoVeiculo 'rodotrem' não encontrado.")
         
         # --- FASE 4: CRIAÇÃO DE EMPRESAS ESTATAIS (OURO/FERRO) ---
         novas_empresas_criadas = 0
@@ -128,19 +128,18 @@ if __name__ == '__main__':
                 db.session.flush() # CRÍTICO: Gera o ID do Armazém
 
                 # Veículo inicial: AGORA 'caminhao_3_4_tipo' ESTÁ DEFINIDO E CHECADO
-                if caminhao_3_4_tipo:
-                    veiculo_inicial = Veiculo(
-                        armazem_id=armazem.id,
-                        nome=caminhao_3_4_tipo.nome_display,
-                        tipo_veiculo=caminhao_3_4_tipo.tipo_veiculo,
-                        capacidade=caminhao_3_4_tipo.capacidade,
-                        velocidade=caminhao_3_4_tipo.velocidade,
-                        custo_tonelada_km=caminhao_3_4_tipo.custo_tonelada_km,
-                        validade_dias=caminhao_3_4_tipo.validade_dias,
-                        nivel_especializacao_req=caminhao_3_4_tipo.nivel_especializacao_req
-                    )
-                    db.session.add(veiculo_inicial)
-                    novos_objetos_armazem += 1
+                veiculo_inicial = Veiculo(
+                    armazem_id=armazem.id,
+                    nome=rodotrem_tipo.nome_display,
+                    tipo_veiculo=rodotrem_tipo.tipo_veiculo,
+                    capacidade=rodotrem_tipo.capacidade,
+                    velocidade=rodotrem_tipo.velocidade,
+                    custo_tonelada_km=rodotrem_tipo.custo_tonelada_km,
+                    validade_dias=rodotrem_tipo.validade_dias,
+                    nivel_especializacao_req=rodotrem_tipo.nivel_especializacao_req
+                )
+                db.session.add(veiculo_inicial)
+                novos_objetos_armazem += 1
 
         if novos_objetos_armazem > 0:
             try:
@@ -152,4 +151,4 @@ if __name__ == '__main__':
         
         # --- Fim da Lógica de Inicialização de Dados ---
 
-    # app.run(debug=True)
+    app.run(debug=True)

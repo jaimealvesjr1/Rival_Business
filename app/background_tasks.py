@@ -1,11 +1,41 @@
 from flask import current_app
 from app import db
-from app.models import Jogador, TreinamentoAtivo, Regiao, RecursoNaMina
+from app.models import Jogador, TreinamentoAtivo, Regiao, RecursoNaMina, Veiculo, HistoricoAcao
 from datetime import datetime, timedelta
 from sqlalchemy.orm import joinedload
 
 MAX_ENERGIA = 200
 ENERGIA_POR_MINUTO = 1
+
+def check_vehicle_validity(app):
+    """Verifica a validade dos veículos e remove os expirados."""
+    with app.app_context():
+        from app import db 
+        
+        # Data de corte: Veículos comprados (data_compra) + validade_dias < NOW
+        veiculos_expirados = Veiculo.query.filter(
+            Veiculo.data_compra + timedelta(days=Veiculo.validade_dias) <= datetime.utcnow()
+        ).all()
+
+        if veiculos_expirados:
+            for veiculo in veiculos_expirados:
+                # 1. REGISTRA NO HISTÓRICO
+                hist = HistoricoAcao(
+                    jogador_id=veiculo.armazem.jogador_id,
+                    tipo_acao='VEICULO_VENCIDO',
+                    descricao=f"Veículo '{veiculo.nome}' expirou e foi removido da frota.",
+                    dinheiro_delta=0.0, # Sem perda direta de dinheiro
+                    gold_delta=0.0
+                )
+                db.session.add(hist)
+
+                db.session.delete(veiculo)
+            
+            try:
+                db.session.commit()
+            except Exception as e:
+                db.session.rollback()
+                print(f"Erro ao deletar veículos expirados: {e}")
 
 def replenish_resources(app):
     """Recarrega as reservas de recursos (ouro) das regiões a cada 6 horas."""
@@ -135,17 +165,16 @@ def regenerate_player_status(app):
             regiao_atual = jogador.regiao_atual
             if not regiao_atual: continue
 
+            # --- 1. CÁLCULO DO BÔNUS DE SAÚDE ---
             multiplicador_saude = 1.0 + regiao_atual.indice_saude 
-            
-            # Ganho: 1 E/min * (1 + Bônus)
-            energia_ganha_por_minuto = ENERGIA_POR_MINUTO * multiplicador_saude
+            energia_ganha_por_minuto_efetiva = ENERGIA_POR_MINUTO * multiplicador_saude
             
             if jogador.energia < MAX_ENERGIA:
                 time_difference: timedelta = datetime.utcnow() - jogador.last_status_update
                 minutes_passed = int(time_difference.total_seconds() // 60)
                 
                 if minutes_passed > 0:
-                    energia_regenerada = minutes_passed * energia_ganha_por_minuto 
+                    energia_regenerada = minutes_passed * energia_ganha_por_minuto_efetiva
                     energia_a_somar = int(energia_regenerada)
                     nova_energia = min(jogador.energia + energia_a_somar, MAX_ENERGIA)
                     time_remainder = time_difference.total_seconds() % 60
@@ -171,12 +200,30 @@ def regenerate_player_status(app):
                 # 2. Adiciona XP (Exemplo)
                 jogador.experiencia += 500
                 
+                # --- REGISTRO NO HISTÓRICO ---
+                
+                if treino.habilidade.startswith('armazem_'):
+                    tipo_acao = 'ARMAZEM_UPGRADE'
+                    nome_melhoria = treino.habilidade.replace('armazem_', '').capitalize()
+                    descricao_acao = f"Melhoria de Armazém ({nome_melhoria}) para Nv {treino.nivel_alvo:.0f} concluída."
+                else:
+                    tipo_acao = 'TREINO'
+                    nome_habilidade = treino.habilidade.capitalize()
+                    descricao_acao = f"Treinamento de {nome_habilidade} concluído. XP ganha: 500."
+                    
+                hist = HistoricoAcao(
+                    jogador_id=jogador.id,
+                    tipo_acao=tipo_acao,
+                    descricao=descricao_acao,
+                    dinheiro_delta=0.0,
+                    gold_delta=0.0
+                )
+                db.session.add(hist)
+                # -----------------------------
+
                 # Adiciona o jogador para salvar a XP/Nível
                 db.session.add(jogador) 
-                
-                # NÃO USE flash() aqui, pois não há contexto de requisição. 
-                # (Assumimos que você já removeu os flashes daqui)
-                
+                                
             # 3. Remove o registro de treino ativo (mesmo que o jogador seja None)
             db.session.delete(treino)
 

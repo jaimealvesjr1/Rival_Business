@@ -91,14 +91,17 @@
     ] %}
     
     {% set skill_map = dict(skills) %}
+    {% set treino_em_andamento = treino_ativo is not none %}
+    {% set is_armazem_training = treino_ativo.habilidade.startswith('armazem_') if treino_ativo else false %}
     
-    {% set skill_name_display = skill_map[treino_ativo.habilidade] if treino_ativo else '' %}
-    
-    {% set training_in_progress = treino_ativo is not none %}
+    {% set skill_name_display = skill_map[treino_ativo.habilidade] if treino_ativo and treino_ativo.habilidade in skill_map else treino_ativo.habilidade|capitalize %}
 
     {% for skill_key, skill_name in skills %}
+        {% set info = jogador.get_skill_upgrade_info(skill_key) %}
         {% set current_level = jogador['habilidade_' + skill_key] %}
         {% set next_level_cost = jogador.get_skill_cost(skill_key, current_level) %}
+        {% set is_training_this = treino_ativo and treino_ativo.habilidade == skill_key %}
+        {% set pode_pagar = jogador.dinheiro >= info.money and jogador.gold >= info.gold %}
 
     <div class="col-md-4 mb-4">
         <div class="card h-100">
@@ -107,30 +110,35 @@
             </div>
             <div class="card-body small">
                 
-                {% if treino_ativo and treino_ativo.habilidade == skill_key %}
+                {% if treino_em_andamento %}
+                        
+                        {% if is_training_this %}
                     
-                    <div class="alert alert-info text-center" 
-                            id="countdown-{{ skill_key }}" 
-                            data-seconds="{{ tempo_restante_segundos }}">
-                        Treinando...
-                    </div>
-                    <p class="text-center small">Conclusão: {{ treino_ativo.data_fim | datetime_local }}</p>
+                            <div class="alert alert-info text-center" 
+                                    id="countdown-{{ skill_key }}" 
+                                    data-seconds="{{ tempo_restante_segundos }}">
+                                Treinando...
+                            </div>
+                            <p class="text-center small">Conclusão: {{ treino_ativo.data_fim | datetime_local }}</p>
                     
-                {% elif treino_ativo %}
-                    
-                    <div class="alert alert-warning">
-                        Você já está treinando {{ skill_name_display }}.
-                    </div>
+                        {% elif is_armazem_training %}                    
+                            <div class="alert alert-warning">
+                                Melhoria de Armazém em andamento.
+                            </div>
+                        {% else %}
+                            <div class="alert alert-danger py-1 small">Habilidade {{ skill_name_display }} sendo treinada.</div>
+                        {% endif %}
                     
                 {% else %}
                     <p class="mb-1"><strong>Melhoria:</strong> Nível {{ "%.0f"|format(current_level + 1) }}</p>
+                    <p class="mb-1"><strong>Efeito:</strong> {{ info.effect }}</p>
                     <p class="mb-1"><strong>Custo:</strong> {{ next_level_cost.custo | currency_format('R$', '.') }}</p>
                     <p class="mb-1"><strong>Tempo:</strong> {{ next_level_cost.tempo_minutos }} minutos</p>
                     <hr class="my-2">
                     <form method="POST" action="{{ url_for('skill_development.train_skill', skill_key=skill_key) }}">
                         <button type="submit" 
-                                class="btn btn-sm btn-success" 
-                                {% if jogador.dinheiro < next_level_cost.custo %}disabled{% endif %}>
+                                class="btn btn-sm btn-success mt-2" 
+                                {% if not pode_pagar %}disabled{% endif %}>
                             Treinar {{ skill_name }}
                         </button>
                     </form>

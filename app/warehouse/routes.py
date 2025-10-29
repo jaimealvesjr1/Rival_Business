@@ -2,7 +2,7 @@ from flask import render_template, redirect, url_for, flash
 from flask_login import login_required, current_user
 from app.warehouse import bp
 from app import db
-from app.models import Jogador, Veiculo, ArmazemRecurso, TipoVeiculo, Armazem, Veiculo, ArmazemRecurso, TreinamentoAtivo, TransporteAtivo
+from app.models import Jogador, Veiculo, ArmazemRecurso, TipoVeiculo, Armazem, Veiculo, ArmazemRecurso, TreinamentoAtivo, TransporteAtivo, HistoricoAcao
 from datetime import datetime, timedelta
 from config import Config
 
@@ -176,7 +176,20 @@ def buy_vehicle(tipo_veiculo):
             validade_dias=tipo_modelo.validade_dias,
             nivel_especializacao_req=tipo_modelo.nivel_especializacao_req
         )
-        db.session.add(novo_veiculo)
+
+        # --- REGISTRO NO HISTÓRICO ---
+        descricao_acao = (
+            f"Compra de {novo_veiculo.nome}. Custo: R${tipo_modelo.custo_money} e G{tipo_modelo.custo_gold} e {tipo_modelo.custo_ferro} Ferro."
+        )
+        hist = HistoricoAcao(
+            jogador_id=jogador.id,
+            tipo_acao='VEICULO_COMPRA',
+            descricao=descricao_acao,
+            dinheiro_delta=-tipo_modelo.custo_money, 
+            gold_delta=-tipo_modelo.custo_gold
+        )
+        db.session.add_all([hist, novo_veiculo])
+
         db.session.commit()
         
         flash(f"Veículo '{novo_veiculo.nome}' adicionado à frota!", 'success')
