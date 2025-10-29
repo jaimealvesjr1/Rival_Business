@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 
-# Loader de Usuário para Flask-Login
 @login_manager.user_loader
 def load_user(user_id):
     """Carrega um usuário pelo ID para o Flask-Login."""

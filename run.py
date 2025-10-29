@@ -152,5 +152,4 @@ if __name__ == '__main__':
         
         # --- Fim da Lógica de Inicialização de Dados ---
 
-    # Inicia o servidor de desenvolvimento
-    app.run(debug=True)
+    # app.run(debug=True)
