@@ -529,39 +529,7 @@ def mine_iron(empresa_id):
         return redirect(url_for('work.work_dashboard'))
         
     # Redireciona para o módulo de gestão de transporte, não para o dashboard de trabalho
-    return redirect(url_for('game_actions.manage_transport'))
-
-@bp.route('/manage_transport')
-@login_required
-def manage_transport():
-    jogador = Jogador.query.get(current_user.id)
-    
-    # Recursos esperando transporte (Minério de Ferro na mina)
-    recursos_mina = RecursoNaMina.query.filter_by(jogador_id=jogador.id).all()
-        
-    # 2. Filtrar os disponíveis (aqueles cuja backref 'transporte_atual' é None)
-    veiculos_disponiveis = [
-        v for v in jogador.armazem.frota.all() 
-        if not v.transporte_atual # Se for uma lista, 'not v.transporte_atual' verifica se está vazia
-    ]
-    
-    # Mapeamento dos recursos para exibir na página (por região/tipo)
-    recursos_por_regiao = {}
-    for recurso in recursos_mina:
-
-        tempo_restante_exp = (recurso.data_expiracao - datetime.utcnow()).total_seconds()
-        recurso.tempo_restante_exp = max(0, int(tempo_restante_exp))
-
-        if recurso.regiao_id not in recursos_por_regiao:
-            recursos_por_regiao[recurso.regiao_id] = {'regiao_nome': recurso.regiao.nome, 'recursos': []}
-        recursos_por_regiao[recurso.regiao_id]['recursos'].append(recurso)
-
-
-    return render_template('game_actions/manage_transport.html',
-                           title='Gerenciar Transporte',
-                           jogador=jogador,
-                           recursos_por_regiao=recursos_por_regiao,
-                           veiculos_disponiveis=veiculos_disponiveis, **footer)
+    return redirect(url_for('work.work_dashboard'))
 
 @bp.route('/company/adjust_tax/<int:empresa_id>', methods=['POST'])
 @login_required
@@ -616,16 +584,17 @@ def start_transport():
     # 1. Obter dados do POST e Objetos Críticos
     recurso_mina_id = request.form.get('recurso_mina_id', type=int)
     recurso_mina = RecursoNaMina.query.get(recurso_mina_id) 
-    quantidade_total_pendente = recurso_mina.quantidade
     
-    # --- VERIFICAÇÕES CRÍTICAS (Mantidas) ---
     if not recurso_mina or recurso_mina.jogador_id != jogador.id or not armazem:
         flash("Dados de transporte inválidos ou armazém não encontrado.", 'danger')
-        return redirect(url_for('game_actions.manage_transport'))
+        return redirect(url_for('work.work_dashboard'))
+    
+    quantidade_total_pendente = recurso_mina.quantidade
+    
     if quantidade_total_pendente <= 0:
         db.session.delete(recurso_mina); db.session.commit()
         flash("Recurso na mina zerado e removido.", 'info')
-        return redirect(url_for('game_actions.manage_transport'))
+        return redirect(url_for('work.work_dashboard'))
     
     try:
         # 2. CÁLCULO DE TEMPO BASE E DISTÂNCIA
@@ -645,7 +614,7 @@ def start_transport():
         custo_frete_total = 0.0
         
         transporte_jobs = [] 
-        ultima_data_fim = datetime.utcnow() # CORRIGIDO: Inicializa com datetime.utcnow
+        ultima_data_fim = datetime.utcnow()
         veiculo_disponivel_em = {v.id: datetime.utcnow() for v in armazem.frota.all()}
 
         # 4. ITERAÇÃO MESTRA: CALCULA CUSTO, TEMPO SEQUENCIAL E CRIA JOBS
@@ -676,25 +645,33 @@ def start_transport():
                     tempo_inicio = veiculo_disponivel_em[veiculo_id] # Pega o tempo que o veículo está livre (datetime)
                     
                     for i in range(viagens_requeridas):
+            
+                        # 1. Determina quanto recurso SOBRA na mina
+                        recurso_ainda_pendente_na_mina = quantidade_total_pendente - recurso_coberto 
                         
+                        # 2. A quantidade a transportar é o MIN(Capacidade do Veículo, Recurso Pendente)
+                        quantidade_a_enviar = min(veiculo.capacidade, recurso_ainda_pendente_na_mina) # <<< CORREÇÃO AQUI
+                        
+                        # Se a quantidade a enviar for <= 0, paramos. (Isso deve ser evitado pelo front-end)
+                        if quantidade_a_enviar <= 0.0:
+                            break 
+                            
                         data_fim_viagem = tempo_inicio + timedelta(minutes=tempo_total_por_viagem)
+                        tempo_inicio = data_fim_viagem # Atualiza o rastreamento para a próxima viagem
                         
-                        tempo_inicio = data_fim_viagem 
-                        
-                        quantidade_por_viagem = veiculo.capacidade
-                        recurso_coberto += quantidade_por_viagem
-                        total_viagens_agendadas += 1
-                        
-                        # Cria o job
+                        # CRIAÇÃO DO JOB
                         transporte = TransporteAtivo(
                             jogador_id=jogador.id, veiculo_id=veiculo.id, regiao_origem_id=regiao_origem.id,
                             regiao_destino_id=regiao_destino.id, tipo_recurso=recurso_mina.tipo_recurso,
-                            quantidade=quantidade_por_viagem, data_fim=data_fim_viagem
+                            quantidade=quantidade_a_enviar, data_fim=data_fim_viagem
                         )
                         transporte_jobs.append(transporte)
+            
+                        recurso_coberto += quantidade_a_enviar
+                        total_viagens_agendadas += 1
                         
                         if data_fim_viagem > ultima_data_fim:
-                             ultima_data_fim = data_fim_viagem
+                            ultima_data_fim = data_fim_viagem
                     
                     # 4.3 Salva a ÚLTIMA data de fim DESTE VEÍCULO no rastreamento
                     veiculo_disponivel_em[veiculo_id] = tempo_inicio 
@@ -702,11 +679,11 @@ def start_transport():
         # 5. VERIFICAÇÃO DE FUNDOS E SUBTRAÇÃO
         if jogador.dinheiro < custo_frete_total:
             flash(f"Dinheiro insuficiente para cobrir o frete. Custo total: {format_currency_python(custo_frete_total)}", 'danger')
-            return redirect(url_for('game_actions.manage_transport'))
+            return redirect(url_for('work.work_dashboard'))
         
         if total_viagens_agendadas == 0:
             flash("Nenhuma viagem agendada. Selecione os veículos e o número de viagens.", 'danger')
-            return redirect(url_for('game_actions.manage_transport'))
+            return redirect(url_for('work.work_dashboard'))
 
         # AÇÃO: Subtrai o custo TOTAL do frete
         jogador.dinheiro -= custo_frete_total
@@ -750,4 +727,4 @@ def start_transport():
         db.session.rollback()
         flash(f"Erro ao agendar transporte: {e}", "danger")
         
-    return redirect(url_for('game_actions.manage_transport'))
+    return redirect(url_for('work.work_dashboard'))

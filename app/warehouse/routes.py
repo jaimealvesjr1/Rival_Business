@@ -2,7 +2,7 @@ from flask import render_template, redirect, url_for, flash
 from flask_login import login_required, current_user
 from app.warehouse import bp
 from app import db
-from app.models import Jogador, Veiculo, ArmazemRecurso, TipoVeiculo, Armazem, Veiculo, ArmazemRecurso, TreinamentoAtivo, TransporteAtivo, HistoricoAcao
+from app.models import Jogador, Veiculo, ArmazemRecurso, TipoVeiculo, Armazem, TreinamentoAtivo, TransporteAtivo, HistoricoAcao, RecursoNaMina
 from datetime import datetime, timedelta
 from config import Config
 
@@ -45,6 +45,23 @@ def view_warehouse():
         if tempo_restante_dt.total_seconds() > 0:
             tempo_total_restante = int(tempo_restante_dt.total_seconds())
 
+    # 1. Carregar Recursos na Mina (aguardando frete)
+    recursos_mina = RecursoNaMina.query.filter_by(jogador_id=jogador.id).all()
+    recursos_por_regiao = {}
+
+    for recurso in recursos_mina:
+        tempo_restante_exp = (recurso.data_expiracao - datetime.utcnow()).total_seconds()
+        recurso.tempo_restante_exp = max(0, int(tempo_restante_exp))
+        
+        if recurso.regiao_id not in recursos_por_regiao:
+            recursos_por_regiao[recurso.regiao_id] = {'regiao_nome': recurso.regiao.nome, 'recursos': []}
+        recursos_por_regiao[recurso.regiao_id]['recursos'].append(recurso)
+    
+    # 2. Carregar Frota Disponível
+    frota_completa = armazem.frota.all()
+    # Veículos que não estão em nenhuma Viagem Ativa
+    veiculos_disponiveis = [v for v in frota_completa if not v.transporte_atual]
+
     transporte_ativo_total = TransporteAtivo.query.filter_by(jogador_id=jogador.id).all()
     
     # Soma a quantidade de recursos em todas essas viagens
@@ -52,8 +69,6 @@ def view_warehouse():
     recurso_em_transito = sum(t.quantidade for t in transporte_ativo_total)
     # ----------------------------------------------------------------------
     
-    # ... (O restante da lógica de ultima_viagem e tempo_total_restante) ...
-
     return render_template('warehouse/view_warehouse.html',
                            title=f"Armazém de {jogador.username}",
                            jogador=jogador,
@@ -66,7 +81,9 @@ def view_warehouse():
                            modelos_veiculos=modelos_veiculos,
                            tempo_total_restante=tempo_total_restante,
                            ultima_viagem=ultima_viagem,
-                           recurso_em_transito=recurso_em_transito, **footer)
+                           recurso_em_transito=recurso_em_transito, 
+                           recursos_por_regiao=recursos_por_regiao,
+                           veiculos_disponiveis=veiculos_disponiveis, **footer)
 
 @bp.route('/upgrade/<string:type>', methods=['POST'])
 @login_required

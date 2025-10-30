@@ -1,8 +1,9 @@
 from flask import render_template, redirect, url_for, flash
 from flask_login import login_required, current_user
 from app.work import bp
-from app.models import ViagemAtiva
+from app.models import ViagemAtiva, RecursoNaMina, TransporteAtivo
 from config import Config
+from datetime import datetime
 
 footer = {'ano': Config.ANO_ATUAL, 'versao': Config.VERSAO_APP}
 
@@ -22,7 +23,6 @@ def work_dashboard():
         return redirect(url_for('profile.view_profile'))
         
     # Busca todas as empresas (estatais e privadas) na localização
-    # Nota: A rota 'game_actions.mine_gold' ainda é usada para o POST
     empresas_na_regiao = regiao.empresas.all()
     
     # Prepara as opções de energia (de 10 em 10, limitado ao jogador)
