@@ -142,8 +142,10 @@ def create_app(config_class=Config):
     from app.market import bp as market_bp
     app.register_blueprint(market_bp)
 
+    from app import cli_commands
+    app.cli.add_command(cli_commands.init_db_command)
+
     with app.app_context():       
-        # Criação inicial do banco de dados (se não existir)
         db.create_all()
     
     # Rota de teste/index (temporária)

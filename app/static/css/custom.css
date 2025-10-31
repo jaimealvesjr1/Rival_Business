@@ -2,6 +2,7 @@ body {
   background: linear-gradient(to bottom right, #f8f9fa, #e2e6ea);
   color: var(--cor-texto);
   min-height: 100vh;
+  padding-top: 5rem;
 }
 
 main {
