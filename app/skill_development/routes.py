@@ -40,21 +40,21 @@ def train_skill(skill_key):
     current_level = getattr(jogador, skill_attr)
     
     # 3. Calcular custo e tempo para o próximo nível
-    custo_info = jogador.get_skill_cost(skill_key, current_level)
-    custo = custo_info['custo']
-    tempo_minutos = custo_info['tempo_minutos']
+    custo_info = jogador.get_skill_upgrade_info(skill_key)
+    custo_money = custo_info['money']
+    custo_gold = custo_info['gold']
+    tempo_minutos = custo_info['time']
     
     # 4. Verificar se o jogador tem dinheiro suficiente
-    if jogador.dinheiro < custo:
-        custo_formatado = f"R$ {custo:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-        custo_formatado = f"R$ {int(custo):,}".replace(",", ".")
-
-        flash(f"Você não tem {custo_formatado} para treinar {skill_key}!", 'danger')
+    if jogador.dinheiro < custo_money or jogador.gold < custo_gold:
+        custo_money_formatado = f"R$ {custo_money:,.0f}".replace(",", ".")
+        flash(f"Você não tem fundos. Requer {custo_money_formatado} e G{custo_gold:.2f}.", 'danger')
         return redirect(url_for('profile.view_profile'))
 
     try:
         # 5. Subtrair o custo e iniciar o Treino
-        jogador.dinheiro -= custo
+        jogador.dinheiro -= custo_money
+        jogador.gold -= custo_gold
         
         data_fim = datetime.utcnow() + timedelta(minutes=tempo_minutos)
         

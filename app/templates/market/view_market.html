@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1 class="mt-4">Mercado Global de Recursos</h1>
+    <p class="lead">Aqui você pode comprar e vender Minério de Ferro e Gold em troca de Dinheiro (R$).</p>
+
+    <div class="row">
+        {% for preco in precos %}
+            {% set tipo = preco.tipo_recurso %}
+            {% set recurso_no_armazem = recursos_armazem[tipo] if tipo in recursos_armazem else None %}
+            {% set saldo = recurso_no_armazem.quantidade | default(0.0) %}
+            
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header bg-primary text-white">
+                        {{ tipo | capitalize }}
+                    </div>
+                    <div class="card-body">
+                        
+                        <ul class="list-unstyled mb-3 small">
+                            <li>Saldo no Armazém: <strong>{{ saldo | int }} Toneladas/Kg</strong></li>
+                            <li>Preço de Venda (Você Recebe): <strong>{{ preco.preco_venda_dinheiro | currency_format('R$') }} / unid.</strong></li>
+                            <li>Preço de Compra (Você Paga): <strong>{{ preco.preco_compra_dinheiro | currency_format('R$') }} / unid.</strong></li>
+                        </ul>
+                        
+                        {# --- SEÇÃO VENDER RECURSO --- #}
+                        <h5 class="small">Vender Recursos</h5>
+                        <form method="POST" action="{{ url_for('market.sell_resource', recurso_tipo=tipo) }}" class="form-inline mb-3">
+                            <input type="number" 
+                                   name="quantidade" 
+                                   min="1" 
+                                   max="{{ saldo | int }}" 
+                                   value="1" 
+                                   required 
+                                   class="form-control form-control-sm mr-2" 
+                                   style="width: 80px;">
+                            <button type="submit" class="btn btn-sm btn-success" {% if saldo < 1 %}disabled{% endif %}>
+                                Vender (R$)
+                            </button>
+                        </form>
+                        
+                        {# --- SEÇÃO COMPRAR RECURSO (FUTURO) --- #}
+                        <h5 class="small">Comprar Recursos</h5>
+                        <button class="btn btn-sm btn-secondary" disabled>Comprar (Em breve)</button>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+{% endblock %}

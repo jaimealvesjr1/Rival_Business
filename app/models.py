@@ -92,23 +92,6 @@ class Jogador(db.Model, UserMixin):
         xp_total_necessaria = base_xp * (multiplicador ** (nivel_alvo - 1)) 
         
         return round(xp_total_necessaria, 0)
-    
-    def get_skill_cost(self, skill_name, current_skill_level):
-        """Calcula o custo e o tempo para o próximo nível de uma habilidade."""
-
-        base_cost = 1000.00
-        base_time_minutes = 10
-
-        # A cada nível, aumenta 20% no preço e no tempo
-        # Ex: Nível 1: base * (1.2 ^ 0)
-        # Ex: Nível 2: base * (1.2 ^ 1)
-
-        multiplicador = 1.2 ** current_skill_level
-
-        custo = round(base_cost * multiplicador, 2)
-        tempo = round(base_time_minutes * multiplicador)
-
-        return {'custo': custo, 'tempo_minutos': tempo}
 
     def get_max_empresas(self):
         """Calcula o número máximo de empresas que o jogador pode possuir."""
@@ -145,7 +128,7 @@ class Jogador(db.Model, UserMixin):
         
         # 1. Cálculo de Custo/Tempo (Mantido)
         base_money = 1000.00
-        base_gold = 5.0 # Suponhamos que o Gold é a moeda de custo para habilidades
+        base_gold = 2.0 # Suponhamos que o Gold é a moeda de custo para habilidades
         base_time_minutes = 10 
         
         multiplicador = 1.2 ** current_level # Usa o nível atual (float)
@@ -459,8 +442,12 @@ class ArmazemRecurso(db.Model):
     armazem_id = db.Column(db.Integer, db.ForeignKey('armazem.id'), nullable=False)
     
     # Tipo de Recurso (e.g., 'ferro', 'petroleo')
-    tipo = db.Column(db.String(50), nullable=False, unique=True) # Unique no tipo para cada armazém
+    tipo = db.Column(db.String(50), nullable=False)
     quantidade = db.Column(db.Float, default=0.0)
+
+    __table_args__ = (
+        db.UniqueConstraint('armazem_id', 'tipo', name='uq_armazem_recurso_tipo'),
+    )
 
 class Veiculo(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -540,3 +527,20 @@ class RecursoNaMina(db.Model):
     
     def __repr__(self):
         return f'<RecursoNaMina: {self.quantidade:.0f} {self.tipo_recurso} em Região {self.regiao_id}>'
+
+class PrecoMercado(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Recurso (ouro ou ferro)
+    tipo_recurso = db.Column(db.String(50), unique=True, nullable=False) 
+    
+    # Preço de COMPRA (Quanto o jogador PAGA em Dinheiro R$ por 1 unidade)
+    preco_compra_dinheiro = db.Column(db.Float, default=1000.0) 
+    
+    # Preço de VENDA (Quanto o jogador RECEBE em Dinheiro R$ por 1 unidade)
+    preco_venda_dinheiro = db.Column(db.Float, default=950.0)
+    
+    # Regra: O preço de venda é sempre menor que o preço de compra (spread de 5% no exemplo)
+
+    def __repr__(self):
+        return f'<Preço: {self.tipo_recurso.capitalize()} - Compra R${self.preco_compra_dinheiro}>'

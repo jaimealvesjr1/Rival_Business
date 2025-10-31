@@ -3,6 +3,7 @@ from flask_login import login_required, current_user
 from app.warehouse import bp
 from app import db
 from app.models import Jogador, Veiculo, ArmazemRecurso, TipoVeiculo, Armazem, TreinamentoAtivo, TransporteAtivo, HistoricoAcao, RecursoNaMina
+from sqlalchemy.exc import IntegrityError
 from datetime import datetime, timedelta
 from config import Config
 
@@ -12,33 +13,37 @@ footer = {'ano': Config.ANO_ATUAL, 'versao': Config.VERSAO_APP}
 @login_required
 def view_warehouse():
     jogador = Jogador.query.get(current_user.id)
-    armazem = jogador.armazem 
+    armazem = jogador.armazem
+    tempo_restante_armazem = 0
+    treino_ativo = jogador.treino_ativo
     
-    # Se o armazém não existir (A lógica de run.py deve garantir que não seja None)
     if not armazem:
         flash("Erro crítico: Armazém não inicializado.", 'danger')
         return redirect(url_for('profile.view_profile'))
         
-    # Carregar dados para o template
     recursos_armazem = ArmazemRecurso.query.filter_by(armazem_id=armazem.id).all()
     frota = armazem.frota.all()
     peso_atual = sum(r.quantidade for r in recursos_armazem)
     modelos_veiculos = TipoVeiculo.query.order_by(TipoVeiculo.nivel_especializacao_req).all()
     
-    # --- CONSOLIDAÇÃO DA LÓGICA DE UPGRADE NO BACKEND ---
     upgrade_list_data = [
         {'display_name': 'Capacidade', 'type': 'capacidade', 'info': armazem.get_capacidade_upgrade_info(), 'current_level': armazem.nivel_capacidade},
         {'display_name': 'Frota', 'type': 'frota', 'info': armazem.get_frota_upgrade_info(), 'current_level': armazem.nivel_frota},
         {'display_name': 'Especialização', 'type': 'especializacao', 'info': armazem.get_especializacao_upgrade_info(), 'current_level': armazem.nivel_especializacao},
     ]
     
-    # Variável de Status de Treino (para o template)
     treino_ativo = jogador.treino_ativo 
     
     ultima_viagem = TransporteAtivo.query.filter_by(
         jogador_id=jogador.id
     ).order_by(TransporteAtivo.data_fim.desc()).first()
     
+    tempo_total_restante = 0
+    if treino_ativo and treino_ativo.habilidade.startswith('armazem_'):
+        tempo_restante = treino_ativo.data_fim - datetime.utcnow()
+        if tempo_restante.total_seconds() > 0:
+            tempo_restante_armazem = int(tempo_restante.total_seconds())
+
     tempo_total_restante = 0
     if ultima_viagem:
         tempo_restante_dt = ultima_viagem.data_fim - datetime.utcnow()
@@ -63,9 +68,6 @@ def view_warehouse():
     veiculos_disponiveis = [v for v in frota_completa if not v.transporte_atual]
 
     transporte_ativo_total = TransporteAtivo.query.filter_by(jogador_id=jogador.id).all()
-    
-    # Soma a quantidade de recursos em todas essas viagens
-    # O filtro sum é mais robusto para listas vazias, mas um loop simples garante o float.
     recurso_em_transito = sum(t.quantidade for t in transporte_ativo_total)
     # ----------------------------------------------------------------------
     
@@ -78,6 +80,7 @@ def view_warehouse():
                            peso_atual=peso_atual,
                            upgrade_list=upgrade_list_data,
                            treino_ativo=treino_ativo,
+                           tempo_restante_armazem=tempo_restante_armazem,
                            modelos_veiculos=modelos_veiculos,
                            tempo_total_restante=tempo_total_restante,
                            ultima_viagem=ultima_viagem,
@@ -137,6 +140,10 @@ def start_upgrade(type):
         db.session.commit()
         
         flash(f"Melhoria de {type.capitalize()} iniciada! Conclusão em {info['time']} minutos.", 'success')
+
+    except IntegrityError:
+        db.session.rollback()
+        flash("Falha ao iniciar melhoria: Um registro de progresso já existe para este jogador. Tente novamente.", 'danger')
         
     except Exception as e:
         db.session.rollback()

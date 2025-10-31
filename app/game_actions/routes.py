@@ -373,6 +373,7 @@ def mine_gold(empresa_id):
         # 1. Jogador
         jogador.experiencia_trabalho += xp_trabalho_ganho_final
         jogador.experiencia += xp_geral_ganho_final
+        jogador.last_status_update = datetime.utcnow()
         jogador.energia -= energia_gasta 
         jogador.dinheiro += dinheiro_liquido_jogador
         jogador.gold += gold_liquido_jogador
@@ -529,7 +530,7 @@ def mine_iron(empresa_id):
         return redirect(url_for('work.work_dashboard'))
         
     # Redireciona para o módulo de gestão de transporte, não para o dashboard de trabalho
-    return redirect(url_for('work.work_dashboard'))
+    return redirect(url_for('warehouse.view_warehouse'))
 
 @bp.route('/company/adjust_tax/<int:empresa_id>', methods=['POST'])
 @login_required
@@ -683,7 +684,7 @@ def start_transport():
         
         if total_viagens_agendadas == 0:
             flash("Nenhuma viagem agendada. Selecione os veículos e o número de viagens.", 'danger')
-            return redirect(url_for('work.work_dashboard'))
+            return redirect(url_for('warehouse.view_warehouse'))
 
         # AÇÃO: Subtrai o custo TOTAL do frete
         jogador.dinheiro -= custo_frete_total
@@ -727,4 +728,4 @@ def start_transport():
         db.session.rollback()
         flash(f"Erro ao agendar transporte: {e}", "danger")
         
-    return redirect(url_for('work.work_dashboard'))
+    return redirect(url_for('warehouse.view_warehouse'))

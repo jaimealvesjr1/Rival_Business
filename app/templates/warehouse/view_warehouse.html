@@ -1,8 +1,6 @@
 {% extends "base.html" %}
 
 {% block content %}
-    
-    {# VARIÁVEIS PASSADAS PELA ROTA #}
     {% set armazem = jogador.armazem %}
     {% set peso_atual = (armazem.recursos | sum(attribute='quantidade')) | default(0.0) %}
     {% set treino_em_andamento = treino_ativo is not none %}
@@ -15,11 +13,8 @@
             <h4 class="alert-heading">Logística em Andamento!</h4>
             <p>A última viagem da sua frota ({{ ultima_viagem.veiculo.nome }}) tem conclusão prevista em <strong id="logistics-countdown" data-seconds="{{ tempo_total_restante }}">Calculando...</strong></p>
         </div>
-    {% else %}
-        <div class="alert alert-success">Sua frota está livre e seus recursos estão armazenados.</div>
     {% endif %}
 
-    {# --- STATUS E INFORMAÇÕES GERAIS DO ARMAZÉM --- #}
     <div class="card mb-4 bg-light p-3">
         <div class="row">
             <div class="col-md-4">
@@ -50,7 +45,6 @@
     </div>
 
     {% if recursos_por_regiao %}
-        {# --- PAINEL DE RECURSOS AGUARDANDO TRANSPORTE (MOVEMOS A LÓGICA AQUI) --- #}
         {% for regiao_id, data in recursos_por_regiao.items() %}
             <div class="card mb-4 border-warning">
                 <div class="card-header bg-warning text-dark">
@@ -87,14 +81,14 @@
                                             <td>{{ veiculo.capacidade | int }} ton</td>
                                             <td>
                                                 <input type="number" 
-                                                       name="viagens_{{ veiculo.id }}" 
-                                                       min="0" 
-                                                       max="{{ viagens_necessarias }}" 
-                                                       value="0" 
-                                                       class="form-control form-control-sm"
-                                                       style="width: 80px;"
-                                                       data-capacidade="{{ veiculo.capacidade }}"
-                                                       data-max="{{ viagens_necessarias }}">
+                                                        name="viagens_{{ veiculo.id }}" 
+                                                        min="0" 
+                                                        max="{{ viagens_necessarias }}" 
+                                                        value="0" 
+                                                        class="form-control form-control-sm"
+                                                        style="width: 80px;"
+                                                        data-capacidade="{{ veiculo.capacidade }}"
+                                                        data-max="{{ viagens_necessarias }}">
                                             </td>
                                         </tr>
                                     {% endfor %}
@@ -111,72 +105,9 @@
                 </div>
             </div>
         {% endfor %}
-    {% else %}
-        <div class="alert alert-success mt-4">Não há recursos esperando por transporte nesta região.</div>
     {% endif %}
 
-    <h2 class="mt-4">Melhorias</h2>
-    
     <div class="row">
-        {% for upgrade in upgrade_list %} 
-            
-            {% set info = upgrade.info %}
-            {% set current_level = upgrade.current_level %}
-            {% set type = upgrade.type %}
-            {% set display_name = upgrade.display_name %}
-
-            {# Checagem de status #}
-            {% set pode_pagar = jogador.dinheiro >= info.money and jogador.gold >= info.gold %}
-            {% set is_training_this = treino_ativo and treino_ativo.habilidade == 'armazem_' + type %}
-            {% set is_training_armazem = treino_ativo and treino_ativo.habilidade.startswith('armazem_') %}
-
-            <div class="col-md-4 mb-4">
-                <div class="card h-100">
-                    <div class="card-header bg-primary text-white">{{ display_name }} - Nível {{ current_level }}</div>
-                    <div class="card-body small">
-                        
-                        {# --- STATUS DE TREINO --- #}
-                        {% if treino_em_andamento %}
-                            
-                            {% if is_training_this %}
-                                <div class="alert alert-info text-center" 
-                                    id="countdown-{{ skill_key }}" 
-                                    data-seconds="{{ tempo_restante_segundos }}">Treinando...</div>
-                            {% elif is_training_armazem %}
-                                <div class="alert alert-danger py-1 small">Outra melhoria de Armazém em andamento.</div>
-                            {% else %}
-                                <div class="alert alert-warning py-1 small">Treino de Habilidade do Jogador ativo.</div>
-                            {% endif %}
-                            
-                        {% endif %}
-                        
-                        {# --- MOSTRAR BOTÃO DE TREINAR --- #}
-                        {# O botão só aparece se não houver treino de Armazém ativo. #}
-                        {% if not is_training_armazem %}
-                            <p class="mb-1"><strong>Melhoria:</strong> Nível {{ "%.0f"|format(current_level + 1) }}</p>
-                            <p class="mb-1"><strong>Efeito:</strong> {{ info.effect }}</p>
-                            <p class="mb-1"><strong>Custo:</strong> {{ info.money | currency_format('R$', '.') }} | Gold: {{ "%.2f"|format(info.gold) }} Kg</p>
-                            <p class="mb-1"><strong>Tempo:</strong> {{ info.time }} minutos</p>
-                            <hr class="my-1">
-                            <form method="POST" action="{{ url_for('warehouse.start_upgrade', type=type) }}">
-                                <button type="submit" 
-                                        class="btn btn-sm btn-success mt-2" 
-                                        {% if not pode_pagar %}disabled{% endif %}>
-                                    Iniciar Melhoria
-                                </button>
-                            </form>
-                        {% endif %}
-
-                    </div>
-                </div>
-            </div>
-        {% endfor %}
-    </div>
-
-    {# --- 1. SEÇÃO RECURSOS --- #}
-    <div class="row">
-
-        {# --- 2. SEÇÃO FROTA E LOGÍSTICA --- #}
         <div class="col-md-4">
             <h2 class="mt-4">Frota de Transporte</h2>
 
@@ -212,8 +143,8 @@
         </div>
 
         <div class="col-md-8">
-            <h2 class="mt-4">Recursos Armazenados</h2>
             <ul class="list-group mb-4">
+                <h2 class="mt-4">Recursos Armazenados</h2>
                 {% for recurso in recursos_armazem %}
                 <li class="list-group-item d-flex justify-content-between">
                     <strong>{{ recurso.tipo | capitalize }}:</strong>
@@ -224,7 +155,63 @@
                 {% endfor %}
             </ul>
         </div>
+    </div>
 
+    <h2 class="mt-4">Melhorias</h2>
+    <div class="row">
+        {% for upgrade in upgrade_list %} 
+            {% set info = upgrade.info %}
+            {% set current_level = upgrade.current_level %}
+            {% set type = upgrade.type %}
+            {% set display_name = upgrade.display_name %}
+
+            {% set pode_pagar = jogador.dinheiro >= info.money and jogador.gold >= info.gold %}
+            {% set is_training_this = treino_ativo and treino_ativo.habilidade == 'armazem_' + type %}
+            {% set is_training_armazem = treino_ativo and treino_ativo.habilidade.startswith('armazem_') %}
+
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-header bg-primary text-white">{{ display_name }} - Nível {{ current_level }}</div>
+                    <div class="card-body small">
+                        
+                        {% if treino_em_andamento %}
+                            {% if is_training_this %}
+                                <div class="alert alert-info text-center" 
+                                        id="armazem-countdown-{{ type }}" 
+                                        data-seconds="{{ tempo_restante_armazem }}">
+                                    Treinando...
+                                </div>
+                                <p class="text-center small">Conclusão: {{ treino_ativo.data_fim | datetime_local }}</p>
+                            {% elif is_training_armazem %}
+                                <div class="alert alert-danger py-1 small">Outra melhoria de Armazém em andamento.</div>
+                            {% else %}
+                                <div class="alert alert-warning py-1 small">Treino de Habilidade do Jogador ativo.</div>
+                            {% endif %}                            
+                        {% endif %}
+                        
+                        {# --- MOSTRAR BOTÃO DE TREINAR --- #}
+                        {# O botão só aparece se não houver treino de Armazém ativo. #}
+                        {% if not is_training_armazem %}
+                            <p class="mb-1"><strong>Melhoria:</strong> Nível {{ "%.0f"|format(current_level + 1) }}</p>
+                            <p class="mb-1"><strong>Efeito:</strong> {{ info.effect }}</p>
+                            <p class="mb-1"><strong>Custo:</strong> {{ info.money | currency_format('R$', '.') }} | Gold: {{ "%.2f"|format(info.gold) }} Kg</p>
+                            <p class="mb-1"><strong>Tempo:</strong> {{ info.time }} minutos</p>
+                            <hr class="my-1">
+                            <form method="POST" action="{{ url_for('warehouse.start_upgrade', type=type) }}">
+                                <button type="submit" 
+                                        class="btn btn-sm btn-success mt-2" 
+                                        {% if not pode_pagar %}disabled{% endif %}>
+                                    Iniciar Melhoria
+                                </button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <div class="row">
         <div class="col-md-12">
             <h2 class="mt-4">Concessionária</h2>
 

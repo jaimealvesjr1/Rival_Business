@@ -199,6 +199,9 @@ def regenerate_player_status(app):
                 
                 # 2. Adiciona XP (Exemplo)
                 jogador.experiencia += 500
+
+                if jogador.check_level_up():
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] NÍVEL UP: Jogador {jogador.username} alcançou Nível {jogador.nivel}!")
                 
                 # --- REGISTRO NO HISTÓRICO ---
                 

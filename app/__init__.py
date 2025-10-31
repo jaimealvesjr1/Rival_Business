@@ -139,6 +139,9 @@ def create_app(config_class=Config):
     from app.warehouse import bp as warehouse_bp
     app.register_blueprint(warehouse_bp)
 
+    from app.market import bp as market_bp
+    app.register_blueprint(market_bp)
+
     with app.app_context():       
         # Criação inicial do banco de dados (se não existir)
         db.create_all()

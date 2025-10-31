@@ -6,7 +6,7 @@ app = create_app(Config)
 if __name__ == '__main__':
     # Cria o arquivo do banco de dados e as tabelas (se não existirem)
     with app.app_context():
-        from app.models import Jogador, Regiao, Empresa, Armazem, Veiculo, TipoVeiculo
+        from app.models import Jogador, Regiao, Empresa, Armazem, Veiculo, TipoVeiculo, PrecoMercado
         from app import db
         db.create_all() 
         
@@ -35,6 +35,26 @@ if __name__ == '__main__':
             {'tipo': 'bitrem', 'display': 'Bitrem', 'cap': 45, 'vel': 0.5, 'custo_tk': 157, 'validade': 7, 'nivel_req': 20, 'ferro': 800, 'money': 1000000, 'gold': 100},
             {'tipo': 'rodotrem', 'display': 'Rodotrem', 'cap': 55, 'vel': 0.5, 'custo_tk': 144, 'validade': 8, 'nivel_req': 25, 'ferro': 1000, 'money': 1500000, 'gold': 150},
         ]
+        precos_iniciais = [
+            # Preços de Minério de Ferro (Exemplo: 1 Tonelada)
+            {'tipo_recurso': 'ferro', 'compra': 15000.00, 'venda': 14000.00},
+            # Preços de Gold (Exemplo: 1 Kg)
+            {'tipo_recurso': 'gold', 'compra': 1100.00, 'venda': 1000.00} 
+        ]
+
+        novos_precos_criados = 0
+        for preco in precos_iniciais:
+            if not PrecoMercado.query.filter_by(tipo_recurso=preco['tipo_recurso']).first():
+                db.session.add(PrecoMercado(
+                    tipo_recurso=preco['tipo_recurso'],
+                    preco_compra_dinheiro=preco['compra'],
+                    preco_venda_dinheiro=preco['venda']
+                ))
+                novos_precos_criados += 1
+                
+        if novos_precos_criados > 0:
+            db.session.commit()
+            print(f"SUCESSO: {novos_precos_criados} Preços de Mercado adicionados.")
 
         # --- FASE 2: CRIAÇÃO DE MODELOS ESTÁTICOS (TIPOS DE VEÍCULOS) ---
         novos_tipos_criados = 0
@@ -74,7 +94,7 @@ if __name__ == '__main__':
                     print(f"Criando {recurso['nome']} na localização: {regiao.nome}")
                     nova_empresa = Empresa(
                         regiao_id=regiao.id,
-                        nome=f"{recurso['nome']} - {regiao.nome}",
+                        nome=f"{recurso['nome']}",
                         tipo='estatal',
                         produto=recurso['tipo_produto'],
                         taxa_lucro=recurso['taxa_lucro'], 
@@ -151,4 +171,4 @@ if __name__ == '__main__':
         
         # --- Fim da Lógica de Inicialização de Dados ---
 
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0')

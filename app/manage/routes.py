@@ -58,22 +58,22 @@ def create_region():
             db.session.add(nova_regiao)
             db.session.flush()
 
-            empresa_estatal_ouro = Empresa(
-                regiao=nova_regiao, # Usa o objeto Regiao recém-criado
-                nome=f'Mina de Ouro', # Nome mais descritivo
-                tipo='estatal',
-                taxa_lucro=0.10,
-                dinheiro=0.0
-            )
-            empresa_estatal_ferro = Empresa(
-                regiao=nova_regiao, # Usa o objeto Regiao recém-criado
-                nome=f'Mina de Ferro', # Nome mais descritivo
-                tipo='estatal',
-                taxa_lucro=0.10,
-                dinheiro=0.0
-            )
-            db.session.add(empresa_estatal_ouro, empresa_estatal_ferro)
+            recursos_estatais = [
+                {'nome': 'Mina Estatal de Ouro', 'produto': 'ouro', 'taxa_lucro': 0.30, 'reserva_key': 'reserva_ouro'},
+                {'nome': 'Mina Estatal de Ferro', 'produto': 'ferro', 'taxa_lucro': 0.30, 'reserva_key': 'reserva_ferro'}
+            ]
 
+            for recurso in recursos_estatais:
+
+                empresa_estatal = Empresa(
+                    regiao_id=nova_regiao.id,
+                    nome=f"{recurso['nome']} - {nova_regiao.nome}",
+                    tipo='estatal',
+                    produto=recurso['produto'],
+                    taxa_lucro=recurso['taxa_lucro'], 
+                    dinheiro=0.0
+                )
+                db.session.add(empresa_estatal)
 
             db.session.commit()
             flash(f'Localização "{nova_regiao.nome}" e estatais criadas com sucesso!', 'success')

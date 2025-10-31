@@ -64,14 +64,14 @@
 
         <div class="table-responsive">
             <table class="table table-striped table-sm">
-                <thead><tr><th>ID</th><th>Nome</th><th>Latitude/Longitude</th><th>Índice Dev</th><th>Imposto</th><th>Reserva Ouro</th><th>Ações</th></tr></thead>
+                <thead><tr><th>ID</th><th>Nome</th><th>Latitude/Longitude</th><th>Índices(Dev - Saúde - Edu)</th><th>Tributação</th><th>Reserva Ouro</th><th>Ações</th></tr></thead>
                 <tbody>
                     {% for regiao in regioes %}
                     <tr>
                         <td>{{ regiao.id }}</td>
                         <td>{{ regiao.nome }}</td>
                         <td>({{ "%.2f"|format(regiao.latitude) }}, {{ "%.2f"|format(regiao.longitude) }})</td>
-                        <td>{{ "%.1f"|format(regiao.indice_desenvolvimento) }} / 10</td>
+                        <td>{{ "%.1f"|format(regiao.indice_desenvolvimento) }} / 10 - {{ "%.1f"|format(regiao.indice_saude) }} / 10 - {{ "%.1f"|format(regiao.indice_educacao) }} / 10</td>
                         <td>{{ (regiao.taxa_imposto_geral * 100)|round(0) }}%</td>
                         <td>{{ "%.0f"|format(regiao.reserva_ouro) }}</td>
                         <td>

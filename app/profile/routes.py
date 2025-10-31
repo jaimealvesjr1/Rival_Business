@@ -1,7 +1,7 @@
 from flask import render_template, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
 from app.profile import bp
-from app.models import Jogador, ViagemAtiva, PedidoResidencia
+from app.models import Jogador, ViagemAtiva, PedidoResidencia, Regiao
 from datetime import datetime, timezone
 from config import Config
 
@@ -24,6 +24,24 @@ def view_profile():
         from flask_login import logout_user
         logout_user()
         return redirect(url_for('auth.login'))
+    
+    # --- NOVO: RANKING DE REGIÕES ---
+    rank_regioes = Regiao.query.order_by(
+        # 1. Ordem principal: Índice de Desenvolvimento (do maior para o menor)
+        Regiao.indice_desenvolvimento.desc(),
+        # 2. Desempate: Índice de Educação (do maior para o menor)
+        Regiao.indice_educacao.desc(),
+        # 3. Desempate secundário: Índice de Saúde (do maior para o menor)
+        Regiao.indice_saude.desc()
+    ).all()
+
+    # --- NOVO: RANKING DE JOGADORES ---
+    rank_jogadores = Jogador.query.order_by(
+        # 1. Ordem principal: Experiência Geral (do maior para o menor)
+        Jogador.experiencia.desc(),
+        # 2. Desempate: Saldo de Dinheiro (do maior para o menor)
+        Jogador.dinheiro.desc()
+    ).all()
     
     treino_ativo = jogador.treino_ativo 
     tempo_restante_segundos = 0
@@ -49,10 +67,12 @@ def view_profile():
         current_app.logger.error(f"Erro ao forçar regeneração na view profile: {e}")
 
     return render_template('profile/view_profile.html',
-                           title='Meu Perfil',
-                           jogador=jogador,
-                           treino_ativo=treino_ativo,
-                           tempo_restante_segundos=tempo_restante_segundos,
-                           viagem_ativa=viagem_ativa,
-                           pedido_ativo=pedido_ativo,
-                           tempo_restante_residencia=tempo_restante_residencia, **footer)
+                            title='Meu Perfil',
+                            jogador=jogador,
+                            treino_ativo=treino_ativo,
+                            tempo_restante_segundos=tempo_restante_segundos,
+                            viagem_ativa=viagem_ativa,
+                            pedido_ativo=pedido_ativo,
+                            tempo_restante_residencia=tempo_restante_residencia,
+                            rank_regioes=rank_regioes,
+                            rank_jogadores=rank_jogadores, **footer)
