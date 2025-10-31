@@ -16,13 +16,6 @@ footer {
   padding: 1rem;
 }
 
-.navbar {
-  position: fixed;
-  top: 0;
-  width: 100%;
-  z-index: 1000;
-}
-
 .flash-messages {
   margin-top: 20px;
 }

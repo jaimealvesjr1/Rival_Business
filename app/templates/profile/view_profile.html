@@ -37,7 +37,7 @@
                             <strong>Pedido de Residência em:</strong><br>
                             {{ jogador.regiao_atual.nome }}
                             <p class="mb-1 small" id="residency-countdown" data-seconds="{{ tempo_restante_residencia }}">Calculando...</p>
-                            <form method="POST" action="{{ url_for('game_actions.cancel_residency') }}" class="d-inline ml-3">
+                            <form method="POST" action="{{ url_for('game_actions.cancel_residency') }}" class="d-inline ms-3">
                                 <button type="submit" class="btn btn-sm btn-danger">Cancelar</button>
                             </form>
                         </div>
@@ -245,7 +245,7 @@
                         <span class="{{ cor }} small">
                             {{ acao.tipo_acao | action_format }}
                         </span>
-                        <span class="flex-grow-1 ml-3 mr-3">{{ acao.descricao }}</span>
+                        <span class="flex-grow-1 ms-3 me-3">{{ acao.descricao }}</span>
                         <span class="small text-muted">{{ acao.timestamp | datetime_local }}</span> 
                     </li>
                 {% endfor %}

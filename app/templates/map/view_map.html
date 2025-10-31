@@ -34,7 +34,7 @@
                         <div>
                             <h5 class="card-title">
                                 {{ destino.nome }}
-                                {% if is_current %}<span class="badge badge-success ml-2">Sua Localização</span>{% endif %}
+                                {% if is_current %}<span class="badge bg-success ms-2">Sua Localização</span>{% endif %}
                                 {% if not viagem_ativa and not is_current %}
                                     - {{ "%.0f"|format(opcao.distancia_bruta) }} Km de viagem
                                 {% endif %}

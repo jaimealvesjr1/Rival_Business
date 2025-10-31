@@ -58,9 +58,9 @@
             <div class="card-body small">
                 <p class="mb-2">Lucro da Empresa: <strong>{{ (empresa.taxa_lucro * 100)|round(0) }}%</strong></p>
                 
-                <form method="POST" action="{{ url_for(route_name, empresa_id=empresa.id) }}" class="form-inline d-flex justify-content-center">
+                <form method="POST" action="{{ url_for(route_name, empresa_id=empresa.id) }}" class="d-flex justify-content-center align-items-center">
                     
-                    <div class="form-group mr-4">
+                    <div class="form-group me-2"> 
                         <select class="form-control" name="energia_gasta" id="energia_gasta_{{ empresa.id }}">
                             {% for i in opcoes_energia %}
                                 <option value="{{ i }}">-{{ i }} E</option>
@@ -90,7 +90,7 @@
         <a href="{{ url_for('game_actions.open_company_view') }}" class="btn btn-success 
             {% if not pode_abrir or limite_atingido or not residente %}disabled{% endif %}" 
             role="button">
-            Abrir Fábrica
+            Abrir Empresa
         </a>
     </div>
 </div>

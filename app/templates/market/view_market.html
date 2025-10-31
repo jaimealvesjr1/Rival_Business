@@ -25,14 +25,14 @@
                         
                         {# --- SEÇÃO VENDER RECURSO --- #}
                         <h5 class="small">Vender Recursos</h5>
-                        <form method="POST" action="{{ url_for('market.sell_resource', recurso_tipo=tipo) }}" class="form-inline mb-3">
+                        <form method="POST" action="{{ url_for('market.sell_resource', recurso_tipo=tipo) }}" class="d-flex align-items-center mb-3">
                             <input type="number" 
                                    name="quantidade" 
                                    min="1" 
                                    max="{{ saldo | int }}" 
                                    value="1" 
                                    required 
-                                   class="form-control form-control-sm mr-2" 
+                                   class="form-control form-control-sm me-2" 
                                    style="width: 80px;">
                             <button type="submit" class="btn btn-sm btn-success" {% if saldo < 1 %}disabled{% endif %}>
                                 Vender (R$)
