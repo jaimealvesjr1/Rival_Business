@@ -1,9 +1,9 @@
 from flask import render_template, redirect, url_for, flash, request
 from flask_login import login_user, current_user, logout_user, login_required
 from app import db, bcrypt
-from app.auth import bp # Importa o Blueprint
+from app.auth import bp
 from app.auth.forms import RegistrationForm, LoginForm
-from app.models import Jogador, Regiao
+from app.models import Jogador, Regiao, Armazem, TipoVeiculo, Veiculo
 from urllib.parse import urlparse as url_parse
 from config import Config
 
@@ -14,34 +14,53 @@ footer = {'ano': Config.ANO_ATUAL, 'versao': Config.VERSAO_APP}
 # ----------------------------------------------------
 @bp.route('/register', methods=['GET', 'POST'])
 def register():
-    # Se o usuário já estiver logado, redireciona para a página principal
     if current_user.is_authenticated:
-        return redirect(url_for('index')) # 'index' é a rota definida em app/__init__.py
+        return redirect(url_for('index'))
 
     form = RegistrationForm()
     
     if form.validate_on_submit():
         try:
-            # 1. Obter a localização inicial
-            # O jogador precisa estar em alguma localização para ter o ID de Foreign Key preenchido
             regiao_inicial = Regiao.query.first()
-            if not regiao_inicial:
-                # Caso o banco de dados esteja vazio, evita o erro de Foreign Key
-                flash('Não há regiões cadastradas. Tente novamente mais tarde.', 'danger')
+            regiao_id_selecionada = form.regiao_inicial_id.data
+            regiao_selecionada = Regiao.query.get(regiao_id_selecionada)
+            if not regiao_selecionada:
+                 # Tratar o caso em que a seleção é inválida ou o placeholder (-1)
+                flash('Região de início inválida. Tente novamente.', 'danger')
                 return redirect(url_for('auth.register'))
 
             # 2. Criação do novo jogador
             new_player = Jogador(
                 username=form.username.data,
-                regiao_residencia_id=regiao_inicial.id,
-                regiao_atual_id=regiao_inicial.id
+                regiao_residencia_id=regiao_selecionada.id,
+                regiao_atual_id=regiao_selecionada.id
             )
-            
-            # Define a senha de forma segura (hashing)
             new_player.set_password(form.password.data)
-            
+                        
             # 3. Adiciona ao banco de dados e salva
             db.session.add(new_player)
+            db.session.flush()
+                       
+            # 1. Cria o Armazém
+            armazem = Armazem(jogador_id=new_player.id, regiao_id=regiao_selecionada.id)
+            db.session.add(armazem)
+            db.session.flush()
+
+            rodotrem_tipo = TipoVeiculo.query.filter_by(tipo_veiculo='rodotrem').first()
+
+            if rodotrem_tipo:
+                veiculo_inicial = Veiculo(
+                    armazem_id=armazem.id,
+                    nome=rodotrem_tipo.nome_display,
+                    tipo_veiculo=rodotrem_tipo.tipo_veiculo,
+                    capacidade=rodotrem_tipo.capacidade,
+                    velocidade=rodotrem_tipo.velocidade,
+                    custo_tonelada_km=rodotrem_tipo.custo_tonelada_km,
+                    validade_dias=rodotrem_tipo.validade_dias,
+                    nivel_especializacao_req=rodotrem_tipo.nivel_especializacao_req
+                )
+                db.session.add(veiculo_inicial)
+
             db.session.commit()
 
             flash('Sua conta foi criada! Você já pode fazer login.', 'success')
@@ -54,10 +73,6 @@ def register():
             
     return render_template('auth/register.html', title='Registro', form=form, **footer)
 
-
-# ----------------------------------------------------
-# ROTA DE LOGIN
-# ----------------------------------------------------
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
     # Se o usuário já estiver logado, redireciona para a página principal
@@ -88,10 +103,6 @@ def login():
         
     return render_template('auth/login.html', title='Login', form=form, **footer)
 
-
-# ----------------------------------------------------
-# ROTA DE LOGOUT
-# ----------------------------------------------------
 @bp.route('/logout')
 @login_required # Garante que apenas usuários logados possam acessar
 def logout():

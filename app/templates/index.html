@@ -2,15 +2,15 @@
 
 {% block content %}
     <div class="jumbotron mt-4 text-center">
-        <h1 class="display-4">Bem-vindo<br>ao Rival Business!</h1>
+        <h1 class="display-4">Bem-vindo ao Rival Business!</h1>
         <p class="lead">Desenvolva seu império, controle o mercado e domine o mundo.</p>
         <hr class="my-4">
         <p>Faça login ou registre-se para começar sua jornada.</p>
         <p class="lead">
-            <a class="btn btn-primary btn-lg" href="{{ url_for('auth.register') }}" role="button">
+            <a class="btn btn-primary btn-lg mt-4 me-1" href="{{ url_for('auth.register') }}" role="button">
                 Quero me Registrar!
             </a>
-            <a class="btn btn-secondary btn-lg" href="{{ url_for('auth.login') }}" role="button">
+            <a class="btn btn-secondary btn-lg mt-4" href="{{ url_for('auth.login') }}" role="button">
                 Já sou Jogador!
             </a>
         </p>

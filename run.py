@@ -110,13 +110,13 @@ if __name__ == '__main__':
         # --- FASE 5: CRIAÇÃO DO ADMIN E ARMAZÉM INICIAL ---
 
         # 5a. Cria o primeiro Administrador (Se não existir)
-        admin_user = Jogador.query.filter_by(username='Admin').first()
+        admin_user = Jogador.query.filter_by(username='MrJames').first()
         if not admin_user:
             print("Criando usuário administrador padrão (username: admin)...")
             
             # Necessário para usar o set_password, que precisa do modelo Jogador
             admin_user = Jogador(
-                username='Admin',
+                username='MrJames',
                 is_admin=True,
                 regiao_residencia_id=regiao_inicial.id,
                 regiao_atual_id=regiao_inicial.id

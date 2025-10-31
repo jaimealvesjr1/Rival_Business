@@ -633,9 +633,9 @@ def start_transport():
                         custo_por_viagem_unitario = CUSTO_MINIMO_FRETE_LOCAL 
                     else:
                         # Frete = Custo por ton/km * Capacidade * Distância Ida
-                        custo_por_viagem_unitario = veiculo.custo_tonelada_km * veiculo.capacidade * distancia_km 
+                        custo_unitario_por_viagem = veiculo.custo_tonelada_km * veiculo.capacidade * distancia_km 
                         
-                    custo_frete_total += custo_por_viagem_unitario * viagens_requeridas # <-- ACUMULA CUSTO TOTAL
+                    custo_frete_total += custo_unitario_por_viagem * viagens_requeridas
                     
                     # 4b. CÁLCULO DE TEMPO AJUSTADO AO VEÍCULO
                     tempo_ajuste_velocidade = 1.0 / veiculo.velocidade 
