@@ -30,7 +30,7 @@ class RegionEditForm(FlaskForm):
     latitude = FloatField('Latitude', validators=[DataRequired(), NumberRange(min=-90, max=90)])
     longitude = FloatField('Longitude', validators=[DataRequired(), NumberRange(min=-180, max=180)])
     reserva_ouro_max = FloatField('Reserva Máxima de Ouro', validators=[DataRequired(), NumberRange(min=0)])
-    reserva_ferro_max = FloatField('Reserva Máxima de Ferro', validators=[DataRequired(), NumberRange(min=0)]) # <-- NOVO CAMPO
+    reserva_ferro_max = FloatField('Reserva Máxima de Ferro', validators=[DataRequired(), NumberRange(min=0)])
     reserva_ouro = FloatField('Reserva Atual de Ouro', validators=[DataRequired(), NumberRange(min=0)])
     reserva_ferro = FloatField('Reserva Atual de Ferro', validators=[DataRequired(), NumberRange(min=0)])
 

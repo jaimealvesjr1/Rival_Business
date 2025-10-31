@@ -44,69 +44,6 @@
         </div>
     </div>
 
-    {% if recursos_por_regiao %}
-        {% for regiao_id, data in recursos_por_regiao.items() %}
-            <div class="card mb-4 border-warning">
-                <div class="card-header bg-warning text-dark">
-                    Recursos em Espera na Mina: <strong>{{ data.regiao_nome }}</strong>
-                </div>
-                <div class="card-body">
-                    {% for recurso in data.recursos %}
-
-                        <h4 class="mb-3">{{ recurso.tipo_recurso | replace('_', ' ') | title }}: {{ recurso.quantidade | int }} Toneladas</h4>
-                        <p class="small text-danger">Prazo para Agendar: <strong id="expiration-countdown-{{ recurso.id }}" data-seconds="{{ recurso.tempo_restante_exp }}">Calculando...</strong></p>
-                        
-                        {# Formulário de Atribuição de Frota #}
-                        <form method="POST" action="{{ url_for('game_actions.start_transport') }}" class="mb-4">
-                            <input type="hidden" name="recurso_mina_id" value="{{ recurso.id }}">
-                            <input type="hidden" name="quantidade_total" value="{{ recurso.quantidade }}">
-                            
-                            <h5 class="small">Atribuição de Frota (Veículos Livres: {{ veiculos_disponiveis | length }})</h5>
-                            
-                            <table class="table table-sm table-striped small">
-                                <thead>
-                                    <tr>
-                                        <th>Veículo</th>
-                                        <th>Capacidade</th>
-                                        <th>Viagens (Max)</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {# Loop de Atribuição de Veículos #}
-                                    {% for veiculo in veiculos_disponiveis %}
-                                        {% set viagens_necessarias = (recurso.quantidade / veiculo.capacidade) | round(0, 'ceil') | int %}
-                                        
-                                        <tr>
-                                            <td>{{ veiculo.nome }} ({{ veiculo.capacidade | int }}t)</td>
-                                            <td>{{ veiculo.capacidade | int }} ton</td>
-                                            <td>
-                                                <input type="number" 
-                                                        name="viagens_{{ veiculo.id }}" 
-                                                        min="0" 
-                                                        max="{{ viagens_necessarias }}" 
-                                                        value="0" 
-                                                        class="form-control form-control-sm"
-                                                        style="width: 80px;"
-                                                        data-capacidade="{{ veiculo.capacidade }}"
-                                                        data-max="{{ viagens_necessarias }}">
-                                            </td>
-                                        </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-
-                            <button type="submit" 
-                                    class="btn btn-primary btn-sm"
-                                    {% if not veiculos_disponiveis %}disabled{% endif %}>
-                                Iniciar Transporte Planejado
-                            </button>
-                        </form>
-                    {% endfor %}
-                </div>
-            </div>
-        {% endfor %}
-    {% endif %}
-
     <div class="row">
         <div class="col-md-4">
             <h2 class="mt-4">Frota de Transporte</h2>
@@ -143,8 +80,68 @@
         </div>
 
         <div class="col-md-8">
+        <h2 class="mt-4">Recursos Armazenados</h2>
+            {% if recursos_por_regiao %}
+                {% for regiao_id, data in recursos_por_regiao.items() %}
+                    <div class="card mb-4 border-warning">
+                        <div class="card-header bg-warning text-dark">
+                        {% for recurso in data.recursos %}
+
+                            Recursos em Espera na Mina de {{ recurso.tipo_recurso | replace('_', ' ') | title }}: <strong>{{ data.regiao_nome }} - {{ recurso.quantidade | int }} Toneladas</strong>
+                        </div>
+                        <div class="card-body">
+                                <p class="small text-danger">Prazo para Agendar: <strong id="expiration-countdown-{{ recurso.id }}" data-seconds="{{ recurso.tempo_restante_exp }}">Calculando...</strong></p>
+                                
+                                <form method="POST" action="{{ url_for('game_actions.start_transport') }}" class="mb-4">
+                                    <input type="hidden" name="recurso_mina_id" value="{{ recurso.id }}">
+                                    <input type="hidden" name="quantidade_total" value="{{ recurso.quantidade }}">
+                                    
+                                    <h5 class="small">Atribuição de Frota (Veículos Livres: {{ veiculos_disponiveis | length }})</h5>
+                                    
+                                    <table class="table table-sm table-striped small">
+                                        <thead>
+                                            <tr>
+                                                <th>Veículo</th>
+                                                <th>Capacidade</th>
+                                                <th>Viagens (Max)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {# Loop de Atribuição de Veículos #}
+                                            {% for veiculo in veiculos_disponiveis %}
+                                                {% set viagens_necessarias = (recurso.quantidade / veiculo.capacidade) | round(0, 'ceil') | int %}
+                                                
+                                                <tr>
+                                                    <td>{{ veiculo.nome }} ({{ veiculo.capacidade | int }}t)</td>
+                                                    <td>{{ veiculo.capacidade | int }} ton</td>
+                                                    <td>
+                                                        <input type="number" 
+                                                                name="viagens_{{ veiculo.id }}" 
+                                                                min="0" 
+                                                                max="{{ viagens_necessarias }}" 
+                                                                value="0" 
+                                                                class="form-control form-control-sm"
+                                                                style="width: 80px;"
+                                                                data-capacidade="{{ veiculo.capacidade }}"
+                                                                data-max="{{ viagens_necessarias }}">
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+
+                                    <button type="submit" 
+                                            class="btn btn-primary btn-sm"
+                                            {% if not veiculos_disponiveis %}disabled{% endif %}>
+                                        Iniciar Transporte Planejado
+                                    </button>
+                                </form>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endfor %}
+            {% endif %}
             <ul class="list-group mb-4">
-                <h2 class="mt-4">Recursos Armazenados</h2>
                 {% for recurso in recursos_armazem %}
                 <li class="list-group-item d-flex justify-content-between">
                     <strong>{{ recurso.tipo | capitalize }}:</strong>

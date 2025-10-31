@@ -584,18 +584,18 @@ def start_transport():
     
     # 1. Obter dados do POST e Objetos Críticos
     recurso_mina_id = request.form.get('recurso_mina_id', type=int)
-    recurso_mina = RecursoNaMina.query.get(recurso_mina_id) 
+    recurso_mina = RecursoNaMina.query.get(recurso_mina_id)
     
     if not recurso_mina or recurso_mina.jogador_id != jogador.id or not armazem:
-        flash("Dados de transporte inválidos ou armazém não encontrado.", 'danger')
-        return redirect(url_for('work.work_dashboard'))
+        flash("Erro: O recurso a ser transportado não foi encontrado ou expirou.", 'danger')
+        return redirect(url_for('warehouse.view_warehouse'))
     
     quantidade_total_pendente = recurso_mina.quantidade
     
     if quantidade_total_pendente <= 0:
         db.session.delete(recurso_mina); db.session.commit()
         flash("Recurso na mina zerado e removido.", 'info')
-        return redirect(url_for('work.work_dashboard'))
+        return redirect(url_for('warehouse.view_warehouse'))
     
     try:
         # 2. CÁLCULO DE TEMPO BASE E DISTÂNCIA
@@ -627,10 +627,11 @@ def start_transport():
                 veiculo = Veiculo.query.get(veiculo_id)
 
                 if veiculo and not veiculo.transporte_atual:
+                    custo_unitario_por_viagem = 0.0
                     
                     # 4a. CÁLCULO DE CUSTO PARA ESTE VEÍCULO
                     if distancia_km < 1.0:
-                        custo_por_viagem_unitario = CUSTO_MINIMO_FRETE_LOCAL 
+                        custo_unitario_por_viagem = CUSTO_MINIMO_FRETE_LOCAL 
                     else:
                         # Frete = Custo por ton/km * Capacidade * Distância Ida
                         custo_unitario_por_viagem = veiculo.custo_tonelada_km * veiculo.capacidade * distancia_km 
@@ -680,7 +681,7 @@ def start_transport():
         # 5. VERIFICAÇÃO DE FUNDOS E SUBTRAÇÃO
         if jogador.dinheiro < custo_frete_total:
             flash(f"Dinheiro insuficiente para cobrir o frete. Custo total: {format_currency_python(custo_frete_total)}", 'danger')
-            return redirect(url_for('work.work_dashboard'))
+            return redirect(url_for('warehouse.view_warehouse'))
         
         if total_viagens_agendadas == 0:
             flash("Nenhuma viagem agendada. Selecione os veículos e o número de viagens.", 'danger')
@@ -692,14 +693,17 @@ def start_transport():
         # 6. VALIDAÇÃO FINAL E LIMPEZA
         
         if recurso_coberto < quantidade_total_pendente:
-             recurso_restante = max(0.0, quantidade_total_pendente - recurso_coberto)
-             recurso_mina.quantidade = recurso_restante
-             flash(f"AVISO: {recurso_restante:.0f}t permanecerão na mina. Frete cobrado.", 'warning')
+            recurso_restante = max(0.0, quantidade_total_pendente - recurso_coberto)
+            recurso_mina.quantidade = recurso_restante
+
+            TEMPO_EXPIRACAO_RECURSO_REMANESCENTE_HORAS = 6 
+            recurso_mina.data_expiracao = datetime.utcnow() + timedelta(hours=TEMPO_EXPIRACAO_RECURSO_REMANESCENTE_HORAS)
+
+            flash(f"AVISO: {recurso_restante:.0f} toneladas permanecerão na mina e expirarão em 6 horas.", 'warning')
+            db.session.add(recurso_mina) 
         else:
              db.session.delete(recurso_mina) 
         
-
-        # --- REGISTRO NO HISTÓRICO ---
         descricao_acao = (
             f"Frete agendado para {total_viagens_agendadas} viagens. Custo: {format_currency_python(custo_frete_total)}."
         )
@@ -710,7 +714,6 @@ def start_transport():
             dinheiro_delta=-custo_frete_total, 
             gold_delta=0.0
         )
-        # -----------------------------
 
         db.session.add_all(transporte_jobs)
         db.session.add(hist)

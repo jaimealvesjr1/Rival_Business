@@ -12,7 +12,6 @@ from config import Config
 
 footer = {'ano': Config.ANO_ATUAL, 'versao': Config.VERSAO_APP}
 
-# Decorador customizado para verificar se o usuário é admin
 def admin_required(f):
     @login_required
     @wraps(f)
@@ -52,15 +51,15 @@ def create_region():
                 longitude=form.longitude.data,
                 
                 reserva_ouro_max=form.reserva_ouro_max.data,
-                reserva_ouro=form.reserva_ouro_max.data
+                reserva_ferro_max=form.reserva_ferro_max.data
             )
             
             db.session.add(nova_regiao)
             db.session.flush()
 
             recursos_estatais = [
-                {'nome': 'Mina Estatal de Ouro', 'produto': 'ouro', 'taxa_lucro': 0.30, 'reserva_key': 'reserva_ouro'},
-                {'nome': 'Mina Estatal de Ferro', 'produto': 'ferro', 'taxa_lucro': 0.30, 'reserva_key': 'reserva_ferro'}
+                {'nome': 'Mina de Ouro', 'produto': 'ouro', 'taxa_lucro': 0.30, 'reserva_key': 'reserva_ouro'},
+                {'nome': 'Mina de Ferro', 'produto': 'ferro', 'taxa_lucro': 0.30, 'reserva_key': 'reserva_ferro'}
             ]
 
             for recurso in recursos_estatais:
