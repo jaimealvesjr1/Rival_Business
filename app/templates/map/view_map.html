@@ -67,11 +67,14 @@
                         <hr class="my-2">
                         {% if not viagem_ativa and not is_current %}
                         <div class="row">
-                            <div class="col-md-6 mb-4">
-                                <strong>Tempo de Viagem:</strong> {{ opcao.tempo_horas }} hora(s)
+                            <div class="col-md-4 mb-4">
+                                <strong>Tempo de Viagem:</strong> {{ opcao.tempo_horas }}h
                             </div>
-                            <div class="col-md-6 mb-4">
-                                <strong>Custo Total:</strong> {{ opcao.custo_total | currency_format('R$', '.') }}
+                            <div class="col-md-4 mb-4">
+                                <strong>Custo:</strong> {{ opcao.custo_total | currency_format('R$', '.') }} {% if jogador.dinheiro >= opcao.custo_total %}✅{% else %}❌{% endif %}
+                            </div>
+                            <div class="col-md-4 mb-4">
+                                <strong>Nível Mínimo: {{ NIVEL_MINIMO }}</strong> {% if jogador.nivel >= NIVEL_MINIMO %}✅{% else %}❌{% endif %}
                             </div>
                         </div>
                             <form method="POST" action="{{ url_for('game_actions.travel') }}">
@@ -82,7 +85,7 @@
                                     {% if jogador.nivel < NIVEL_MINIMO %}
                                         Requer Nv. {{ NIVEL_MINIMO }}
                                     {% elif opcao.pode_viajar %}
-                                        Viajar Agora
+                                        Comprar passagem e embarcar
                                     {% else %}
                                         Renda Insuficiente
                                     {% endif %}

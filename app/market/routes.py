@@ -80,7 +80,7 @@ def view_market():
     dinheiro_disponivel = jogador.dinheiro - jogador.dinheiro_reservado
 
     return render_template('market/view_market.html',
-                           title='Mercado P2P',
+                           title='Mercado',
                            jogador=jogador,
                            form=form,
                            sell_orders=sell_orders,

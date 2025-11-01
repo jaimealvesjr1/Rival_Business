@@ -129,7 +129,10 @@ def mine_iron_action(jogador: Jogador, empresa: Empresa, regiao: Regiao, energia
     energia_gasta_real = ceil(energia_gasta * (1.0 - desconto_energia))
     
     # --- CÁLCULO DE GANHO, ESGOTAMENTO E XP (Usando Config) ---
-    ferro_obtido = current_app.config['FERRO_POR_ENERGIA'] * energia_gasta
+    bonus_regional = 1.0 + (regiao.indice_desenvolvimento / 10.0) 
+    
+    ferro_base = current_app.config['FERRO_POR_ENERGIA'] * energia_gasta
+    ferro_obtido = ferro_base * bonus_regional
     
     xp_trabalho_ganho_final = current_app.config['XP_TRABALHO_POR_ENERGIA'] * energia_gasta
     xp_geral_ganho_base = current_app.config['XP_GERAL_POR_ENERGIA'] * energia_gasta

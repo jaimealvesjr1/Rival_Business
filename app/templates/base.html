@@ -24,28 +24,28 @@
                 {% if current_user.is_authenticated %}
                 
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('profile.view_profile') }}">Perfil</a>
+                    <a class="nav-link" href="{{ url_for('profile.view_profile') }}"><i class="fas fa-user-circle me-2"></i>Perfil</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('work.work_dashboard') }}">Trabalho</a>
+                    <a class="nav-link" href="{{ url_for('work.work_dashboard') }}"><i class="fas fa-briefcase me-2"></i>Trabalho</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('market.view_market') }}">Mercado</a>
+                    <a class="nav-link" href="{{ url_for('market.view_market') }}"><i class="fas fa-store me-2"></i>Mercado</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('warehouse.view_warehouse') }}">Armazém</a>
+                    <a class="nav-link" href="{{ url_for('warehouse.view_warehouse') }}"><i class="fas fa-warehouse me-2"></i>Armazém</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('map.view_map') }}">Mapa</a>
+                    <a class="nav-link" href="{{ url_for('map.view_map') }}"><i class="fas fa-map-marked-alt me-2"></i>Mapa</a>
                 </li>
                 {% if current_user.is_admin %}
                 <li class="nav-item">
-                    <a class="nav-link text-warning" href="{{ url_for('manage.manage_dashboard') }}">Gestão</a>
+                    <a class="nav-link text-warning" href="{{ url_for('manage.manage_dashboard') }}"><i class="fas fa-cogs me-2"></i>Gestão</a>
                 </li>
                 {% endif %}
                 
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('auth.logout') }}">Sair</a>
+                    <a class="nav-link" href="{{ url_for('auth.logout') }}"><i class="fas fa-sign-out-alt me-2"></i>Sair</a>
                 </li>
                 
                 {% else %} 

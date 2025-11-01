@@ -20,7 +20,7 @@ def travel():
     regiao_atual = jogador.regiao_atual
     
     destino_id = request.form.get('destino_id', type=int)
-    destino = Regiao.query.get(destino_id),
+    destino = Regiao.query.get(destino_id)
     NIVEL_MINIMO_PARA_VIAGEM = 2
 
     if jogador.nivel < NIVEL_MINIMO_PARA_VIAGEM:

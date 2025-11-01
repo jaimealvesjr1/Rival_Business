@@ -31,111 +31,114 @@
             </form>
         </div>
     </details>
+    
+    <ul class="nav nav-tabs" id="marketTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="buy-tab" data-bs-toggle="tab" data-bs-target="#buy-panel" type="button" role="tab">
+                Ordens de Venda (Comprar)
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="sell-tab" data-bs-toggle="tab" data-bs-target="#sell-panel" type="button" role="tab">
+                Ordens de Compra (Vender)
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="my-orders-tab" data-bs-toggle="tab" data-bs-target="#my-orders-panel" type="button" role="tab">
+                Minhas Ordens
+            </button>
+        </li>
+    </ul>
 
-    <div class="row">
-        <div class="col-lg-6 mb-4">
-            <h4>Ordens de Venda (COMPRE dos outros)</h4>
-            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-                <table class="table table-sm table-striped table-hover">
-                    <thead class="table-success sticky-top">
-                        <tr>
-                            <th>Vendedor</th>
-                            <th>Recurso</th>
-                            <th>Preço (R$)</th>
-                            <th>Qtd.</th>
-                            <th>Ação (Comprar)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for order in sell_orders %}
-                        <tr>
-                            <td>{{ order.jogador.username }}</td>
-                            <td>{{ order.resource_type | capitalize }}</td>
-                            <td>{{ order.price_per_unit | currency_format('R$') }}</td>
-                            <td>{{ order.quantity_remaining | int }}</td>
-                            <td>
-                                <form method="POST" action="{{ url_for('market.fill_order', order_id=order.id) }}" class="d-flex">
-                                    <input type="number" name="quantity" min="1" max="{{ order.quantity_remaining | int }}" value="1" class="form-control form-control-sm" style="width: 60px;" required>
-                                    <button type="submit" class="btn btn-success btn-sm ms-1">Comprar</button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr><td colspan="5" class="text-center">Nenhuma ordem de venda ativa.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <div class="col-lg-6 mb-4">
-            <h4>Ordens de Compra (VENDA para os outros)</h4>
-            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-                <table class="table table-sm table-striped table-hover">
-                    <thead class="table-warning sticky-top">
-                        <tr>
-                            <th>Comprador</th>
-                            <th>Recurso</th>
-                            <th>Preço (R$)</th>
-                            <th>Qtd.</th>
-                            <th>Ação (Vender)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for order in buy_orders %}
-                        <tr>
-                            <td>{{ order.jogador.username }}</td>
-                            <td>{{ order.resource_type | capitalize }}</td>
-                            <td>{{ order.price_per_unit | currency_format('R$') }}</td>
-                            <td>{{ order.quantity_remaining | int }}</td>
-                            <td>
-                                <form method="POST" action="{{ url_for('market.fill_order', order_id=order.id) }}" class="d-flex">
-                                    <input type="number" name="quantity" min="1" max="{{ order.quantity_remaining | int }}" value="1" class="form-control form-control-sm" style="width: 60px;" required>
-                                    <button type="submit" class="btn btn-warning btn-sm ms-1">Vender</button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr><td colspan="5" class="text-center">Nenhuma ordem de compra ativa.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <h3 class="mt-4">Minhas Ordens Ativas</h3>
-    <div class="table-responsive">
-        <table class="table table-sm table-striped">
-            <thead class="table-secondary">
-                <tr>
-                    <th>Tipo</th>
-                    <th>Recurso</th>
-                    <th>Qtd. Restante</th>
-                    <th>Preço (R$)</th>
-                    <th>Expira em</th>
-                    <th>Ação</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for order in my_active_orders %}
-                <tr class="{% if order.order_type == 'SELL' %}table-success-light{% else %}table-warning-light{% endif %}">
-                    <td>{{ order.order_type | capitalize }}</td>
-                    <td>{{ order.resource_type | capitalize }}</td>
-                    <td>{{ order.quantity_remaining | int }} / {{ order.quantity | int }}</td>
-                    <td>{{ order.price_per_unit | currency_format('R$') }}</td>
-                    <td><span data-seconds="{{ (order.data_expiracao - utcnow).total_seconds() | int }}">Calculando...</span></td>
-                    <td>
-                        <form method="POST" action="{{ url_for('market.cancel_order', order_id=order.id) }}">
-                            <button type="submit" class="btn btn-danger btn-sm">Cancelar</d>
-                        </form>
-                    </td>
-                </tr>
+    <div class="tab-content" id="marketTabsContent">
+        
+        <div class="tab-pane fade show active" id="buy-panel" role="tabpanel">
+            <ul class="list-group mt-3">
+                {% for order in sell_orders %}
+                <li class="list-group-item">
+                    <form method="POST" action="{{ url_for('market.fill_order', order_id=order.id) }}">
+                        <div class="row align-items-center">
+                            <div class="col-lg-3 col-md-4 col-12">
+                                <strong class="text-success">VENDEDOR:</strong> {{ order.jogador.username }}<br>
+                                <small class="text-muted">{{ order.resource_type | capitalize }}</small>
+                            </div>
+                            <div class="col-lg-3 col-md-4 col-6">
+                                <strong>Preço:</strong> {{ order.price_per_unit | currency_format('R$') }}<br>
+                                <small class="text-muted">Disponível: {{ order.quantity_remaining | int }}</small>
+                            </div>
+                            <div class="col-lg-6 col-md-4 col-6 d-flex justify-content-end">
+                                <input type="number" name="quantity" min="1" max="{{ order.quantity_remaining | int }}" value="1" class="form-control form-control-sm" style="width: 80px;" required>
+                                <button type="submit" class="btn btn-success btn-sm ms-2">Comprar</button>
+                            </div>
+                        </div>
+                    </form>
+                </li>
                 {% else %}
-                <tr><td colspan="6" class="text-center">Você não tem ordens ativas.</td></tr>
+                <li class="list-group-item text-center">Nenhuma ordem de venda ativa.</li>
                 {% endfor %}
-            </tbody>
-        </table>
-    </div>
+            </ul>
+        </div>
+        
+        <div class="tab-pane fade" id="sell-panel" role="tabpanel">
+            <ul class="list-group mt-3">
+                {% for order in buy_orders %}
+                <li class="list-group-item">
+                    <form method="POST" action="{{ url_for('market.fill_order', order_id=order.id) }}">
+                        <div class="row align-items-center">
+                            <div class="col-lg-3 col-md-4 col-12">
+                                <strong class="text-warning">COMPRADOR:</strong> {{ order.jogador.username }}<br>
+                                <small class="text-muted">{{ order.resource_type | capitalize }}</small>
+                            </div>
+                            <div class="col-lg-3 col-md-4 col-6">
+                                <strong>Preço:</strong> {{ order.price_per_unit | currency_format('R$') }}<br>
+                                <small class="text-muted">Procurando: {{ order.quantity_remaining | int }}</small>
+                            </div>
+                            <div class="col-lg-6 col-md-4 col-6 d-flex justify-content-end">
+                                <input type="number" name="quantity" min="1" max="{{ order.quantity_remaining | int }}" value="1" class="form-control form-control-sm" style="width: 80px;" required>
+                                <button type="submit" class="btn btn-warning btn-sm ms-2">Vender</button>
+                            </div>
+                        </div>
+                    </form>
+                </li>
+                {% else %}
+                <li class="list-group-item text-center">Nenhuma ordem de compra ativa.</li>
+                {% endfor %}
+            </ul>
+        </div>
 
+        <div class="tab-pane fade" id="my-orders-panel" role="tabpanel">
+            <ul class="list-group mt-3">
+                {% for order in my_active_orders %}
+                <li class="list-group-item">
+                    <div class="row align-items-center">
+                        <div class="col-md-3 col-12">
+                            {% if order.order_type == 'SELL' %}
+                            <strong class="text-success">VENDENDO</strong>
+                            {% else %}
+                            <strong class="text-warning">COMPRANDO</strong>
+                            {% endif %}
+                            <br>
+                            <small class="text-muted">{{ order.resource_type | capitalize }}</small>
+                        </div>
+                        <div class="col-md-4 col-6">
+                            <strong>Preço:</strong> {{ order.price_per_unit | currency_format('R$') }}<br>
+                            <small class="text-muted">Restante: {{ order.quantity_remaining | int }} / {{ order.quantity | int }}</small>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <strong>Expira em:</strong><br>
+                            <small><span data-seconds="{{ (order.data_expiracao - utcnow).total_seconds() | int }}">...</span></small>
+                        </div>
+                        <div class="col-md-2 col-12 mt-2 mt-md-0 d-flex justify-content-end">
+                            <form method="POST" action="{{ url_for('market.cancel_order', order_id=order.id) }}">
+                                <button type="submit" class="btn btn-danger btn-sm">Cancelar</button>
+                            </form>
+                        </div>
+                    </div>
+                </li>
+                {% else %}
+                <li class="list-group-item text-center">Você não tem ordens ativas.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
 {% endblock %}
