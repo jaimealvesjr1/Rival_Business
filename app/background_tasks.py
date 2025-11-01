@@ -1,7 +1,8 @@
 from flask import current_app
 from app import db
 from app.models import (Jogador, TreinamentoAtivo, Regiao, RecursoNaMina, 
-                        Veiculo, HistoricoAcao, MarketOrder, ArmazemRecurso)
+                        Veiculo, HistoricoAcao, MarketOrder, ArmazemRecurso,
+                        CampoAgricola, PlantioAtivo)
 from datetime import datetime, timedelta
 from sqlalchemy.orm import joinedload
 
@@ -185,6 +186,66 @@ def regenerate_player_status(app):
                     
                     db.session.add(jogador)
 
+        plantios_concluidos = PlantioAtivo.query.filter(
+            PlantioAtivo.data_fim <= datetime.utcnow()
+        ).all()
+
+        for plantio in plantios_concluidos:
+            jogador_plantou = plantio.jogador
+            campo = plantio.campo
+
+            if not jogador_plantou or not campo:
+                db.session.delete(plantio)
+                continue
+
+            dono_campo = campo.proprietario
+
+            # 1. Calcular XP (Regra 1)
+            # Damos 15 XP por cada 10 energia usados (ex: 100 energia = 150 XP)
+            # (Precisamos estimar a energia gasta, pois não salvamos ela)
+            # Vamos usar um valor fixo por enquanto, ou baseado na quantidade
+            xp_ganho = current_app.config['FARMING_XP_PER_10_ENERGY'] * (plantio.quantidade_produzida / current_app.config['MILHO_POR_ENERGIA'])
+            jogador_plantou.experiencia_trabalho += xp_ganho
+
+            # 2. Calcular Divisão do Lucro
+            lucro_dono = 0.0
+
+            # Se quem plantou não é o dono, o dono ganha uma taxa
+            if jogador_plantou.id != dono_campo.id:
+                lucro_dono = plantio.quantidade_produzida * campo.taxa_lucro
+
+            lucro_jogador = plantio.quantidade_produzida - lucro_dono
+
+            # 3. Criar RecursoNaMina para o Jogador que Plantou
+            expiracao_min = current_app.config['RECURSO_NA_MINA_EXPIRACAO_MIN']
+
+            recurso_jogador = RecursoNaMina(
+                jogador_id=jogador_plantou.id,
+                regiao_id=campo.regiao_id,
+                tipo_recurso='milho',
+                quantidade=lucro_jogador,
+                data_expiracao = datetime.utcnow() + timedelta(minutes=expiracao_min)
+            )
+            db.session.add(recurso_jogador)
+
+            # 4. Criar RecursoNaMina para o Dono (se houver lucro)
+            if lucro_dono > 0:
+                recurso_dono = RecursoNaMina(
+                    jogador_id=dono_campo.id,
+                    regiao_id=campo.regiao_id,
+                    tipo_recurso='milho',
+                    quantidade=lucro_dono,
+                    data_expiracao = datetime.utcnow() + timedelta(minutes=expiracao_min)
+                )
+                db.session.add(recurso_dono)
+
+            db.session.add(HistoricoAcao(jogador_id=jogador_plantou.id, tipo_acao='COLHEITA', descricao=f"Colheu {lucro_jogador:.0f}t de Milho em {campo.nome}."))
+            if lucro_dono > 0:
+                db.session.add(HistoricoAcao(jogador_id=dono_campo.id, tipo_acao='TAXA_COLHEITA', descricao=f"Recebeu {lucro_dono:.0f}t de Milho (taxa) de {campo.nome}."))
+
+            # 5. Deletar o plantio
+            db.session.delete(plantio)
+
         treinos_concluidos = TreinamentoAtivo.query.filter(
             TreinamentoAtivo.data_fim <= datetime.utcnow()
         ).all()
@@ -358,18 +419,50 @@ def clean_expired_resources(app):
                 db.session.rollback()
                 print(f"[{datetime.now().strftime('%H:%M:%S')}] Erro ao deletar recursos expirados: {e}")
 
+def update_farming_status(app):
+    """
+    Verifica campos agrícolas que terminaram o descanso
+    e reseta seus usos.
+    """
+    with app.app_context():
+        from app import db
+
+        campos_descansados = CampoAgricola.query.filter(
+            CampoAgricola.data_descanso_fim.isnot(None),
+            CampoAgricola.data_descanso_fim <= datetime.utcnow()
+        ).all()
+
+        if not campos_descansados:
+            return
+
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] Resetando {len(campos_descansados)} campos agrícolas...")
+
+        for campo in campos_descansados:
+            campo.usos_restantes = current_app.config['FARMING_FIELD_MAX_USES']
+            campo.data_descanso_fim = None
+            db.session.add(campo)
+
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            print(f"Erro ao resetar campos: {e}")
+
 def run_core_status_updates(app):
     """
     Função mestra para executar todos os jobs de alta frequência (60 segundos).
     """
-    # 1. Regeneração de Status e Conclusão de Treino/Viagem (CRÍTICO)
+    # 1. Regeneração de Status e Conclusão de Treino/Viagem/Plantio (CRÍTICO)
     regenerate_player_status(app)
-    
+
     # 2. Atualização de Índices Regionais (Necessário para taxas/bônus)
     update_region_indices(app)
-    
+
     # 3. Limpeza de Recursos Expirados (Manutenção)
     clean_expired_resources(app)
+
+    # 4. Atualização de Campos Agrícolas (Resetar descanso)
+    update_farming_status(app)
 
 def cleanup_expired_market_orders(app):
     """

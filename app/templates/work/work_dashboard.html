@@ -169,7 +169,110 @@
         <li>Nível Mínimo (Nv 5): <strong>{% if jogador.nivel >= 5 %}✅{% else %}❌{% endif %}</strong></li>
         <li>Residência na Localização: <strong>{% if residente %}✅{% else %}❌{% endif %}</strong></li>
         <li>Empresas (Limite {{ jogador.empresas_proprias | length }}/{{ jogador.get_max_empresas() }}): <strong>{% if limite_atingido %}❌{% else %}✅{% endif %}</strong></li>
-        <li>Custo: <strong>{{ custos.money | currency_format('R$') }}</strong> e <strong>{{ custos.gold | currency_format('', separator='') }} G</strong></li>
+        <li>Custo: <strong>{{ custos.money | currency_format('R$') }} {% if jogador.dinheiro >= custos.money %}✅{% else %}❌{% endif %}</strong> e Gold: <strong>{{ custos.gold | currency_format('', separator='') }} Kg {% if jogador.gold >= custos.gold %}✅{% else %}❌{% endif %}</strong></li>
+    </ul>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-4 mt-5">
+    <h2 class="mb-3 mt-4">Campos Agrícolas</h2>
+    <div class="btn-group">
+        {% set custos_campo = jogador.get_open_campo_cost() %}
+        {% set pode_comprar_campo = (jogador.dinheiro >= custos_campo.money and 
+                                   jogador.gold >= custos_campo.gold and 
+                                   jogador.nivel >= 2 and 
+                                   jogador.campos_proprios | length < jogador.get_max_campos()) %}
+                                   
+        <a href="{{ url_for('game_actions.open_campo_view') }}" class="btn btn-success
+            {% if not pode_comprar_campo %}disabled{% endif %}" 
+            role="button">
+            Comprar Campo
+        </a>
+    </div>
+</div>
+
+{% if campos_na_regiao %}
+<div class="row mt-4">
+    {% for campo in campos_na_regiao %}
+        {% set is_owner = campo.proprietario_id == jogador.id %}
+        {% set em_descanso = campo.data_descanso_fim and campo.data_descanso_fim > utcnow %}
+        {% set slots_ocupados = campo.plantios_ativos.count() %}
+        {% set slots_max = FARMING_FIELD_MAX_SLOTS %}
+        {% set pode_plantar = not em_descanso and slots_ocupados < farm_slots_max %}
+        
+        <div class="col-md-6 mb-4">
+            <div class="card h-100 {% if is_owner %}border-primary{% else %}border-success{% endif %}">
+                <div class="card-header {% if is_owner %}bg-primary text-white{% else %}bg-success text-white{% endif %}">
+                    {{ campo.nome }} (Dono: {{ campo.proprietario.username }})
+                </div>
+                <div class="card-body small">
+                
+                    {% if em_descanso %}
+                        <div class="alert alert-warning text-center">
+                            <strong>EM DESCANSO</strong><br>
+                            <small>Próxima Safra em: <span data-seconds="{{ (campo.data_descanso_fim - utcnow).total_seconds() | int }}">...</span></small>
+                        </div>
+                    {% else %}
+                        <p class="mb-1">Taxa do Dono: <strong>{{ (campo.taxa_lucro * 100)|round(0) }}%</strong></p>
+                        <p class="mb-1">Safras Restantes: <strong>{{ campo.usos_restantes }} / {{ FARMING_FIELD_MAX_USES }}</strong></p>
+                        <p class="mb-1">Custo (por 10 Energia): 
+                            <strong>{{ FARMING_COST_MONEY_PER_10_ENERGY | currency_format('R$', '.') }}</strong>
+                        </p>
+
+                        <hr class="my-2">
+
+                        <h6 class="small">Campos de Plantio:</h6>
+                        <ul class="list-unstyled">
+                            {% for plantio in campo.plantios_ativos %}
+                            <li class="small text-muted mb-2">
+                                <i class="fas fa-hourglass-half me-1"></i>
+                                Campo cultivado por <strong>{{ plantio.jogador.username }}</strong>
+                                <br>
+                                <strong class="ms-3">Próxima Colheita</strong> <span data-seconds="{{ (plantio.data_fim - utcnow).total_seconds() | int }}">...</span>
+                            </li>
+                            {% endfor %}
+                            
+                            {% set slots_livres = slots_max - slots_ocupados %}
+                            {% for i in range(slots_livres) %}
+                            <li class="small text-success">
+                                <i class="fas fa-check-circle me-1"></i>
+                                Campo disponível para plantio
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    
+                        <hr class="my-3">
+                        
+                        <form method="POST" action="{{ url_for('game_actions.plant_corn', campo_id=campo.id) }}" class="d-flex align-items-center">
+                            <div class="form-group me-2">
+                                <select class="form-control form-control-sm" name="energia_gasta" id="energia_gasta_campo_{{ campo.id }}">
+                                    {% for i in opcoes_energia %}
+                                        <option value="{{ i }}">-{{ i }} E</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-sm btn-success" 
+                                {% if not opcoes_energia or not pode_plantar %}disabled{% endif %}>
+                                Plantar Milho
+                            </button>
+                        </form>
+                    {% endif %}
+                    
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+{% else %}
+<p>Nenhum campo agrícola nesta localização.</p>
+{% endif %}
+
+<div class="alert alert-secondary small">
+    Requisitos para Comprar Campo:
+    <ul class="mb-0">
+        <li>Nível Mínimo (Nv 2): <strong>{% if jogador.nivel >= 2 %}✅{% else %}❌{% endif %}</strong></li>
+        <li>Residência na Localização: <strong>{% if residente %}✅{% else %}❌{% endif %}</strong></li>
+        <li>Campos (Limite {{ jogador.campos_proprios | length }}/{{ jogador.get_max_campos() }}): <strong>{% if jogador.campos_proprios | length < jogador.get_max_campos() %}✅{% else %}❌{% endif %}</strong></li>
+        <li>Custo: <strong>{{ custos_campo.money | currency_format('R$') }}{% if jogador.dinheiro >= custos_campo.money %}✅{% else %}❌{% endif %}</strong> e Gold: <strong>{{ custos_campo.gold | currency_format('', separator='') }} Kg {% if jogador.gold >= custos_campo.gold %}✅{% else %}❌{% endif %}</strong></li>
     </ul>
 </div>
 {% endblock %}

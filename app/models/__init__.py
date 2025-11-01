@@ -122,6 +122,28 @@ class Jogador(db.Model, UserMixin):
         
         return {'gold': cost_gold, 'money': cost_money}
     
+    def get_max_campos(self):
+        """Regra 3: 1 campo a cada 2 níveis."""
+        if self.nivel < 2:
+            return 0
+        return self.nivel // 2
+
+    def get_open_campo_cost(self):
+        """Calcula o custo para comprar um novo Campo."""
+        # Custo 20x mais barato que uma Fábrica (R$100k vs R$2M)
+        base_gold = 10.0
+        base_money = 100000.0
+        
+        num_campos_atuais = len(self.campos_proprios)
+        
+        # Aumento de 25% (igual às fábricas)
+        multiplicador_aumento = 1.25 ** num_campos_atuais
+        
+        cost_gold = round(base_gold * multiplicador_aumento, 2)
+        cost_money = round(base_money * multiplicador_aumento, 2)
+        
+        return {'gold': cost_gold, 'money': cost_money}
+    
     def get_skill_upgrade_info(self, skill_key): # Novo nome de função para ser mais explícito
         """Retorna o custo, tempo e efeito para o próximo nível da habilidade."""
         
@@ -548,3 +570,41 @@ class MarketOrder(db.Model):
 
     jogador = db.relationship('Jogador', backref='market_orders')
     regiao = db.relationship('Regiao')
+
+class CampoAgricola(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(100), nullable=False)
+    regiao_id = db.Column(db.Integer, db.ForeignKey('regiao.id'), nullable=False)
+    proprietario_id = db.Column(db.Integer, db.ForeignKey('jogador.id'), nullable=False)
+    
+    # Taxa que o dono ganha (10% padrão)
+    taxa_lucro = db.Column(db.Float, default=0.10) 
+    
+    # Regra de Descanso: 6 colheitas
+    usos_restantes = db.Column(db.Integer, default=6) 
+    
+    # Regra de Descanso: 6 horas
+    data_descanso_fim = db.Column(db.DateTime, nullable=True) # Data que o descanso termina
+
+    proprietario = db.relationship('Jogador', backref='campos_proprios')
+    regiao = db.relationship('Regiao', backref='campos_agricolas')
+    plantios_ativos = db.relationship('PlantioAtivo', backref='campo', lazy='dynamic')
+
+    def __repr__(self):
+        return f'<CampoAgricola {self.nome} (Dono: {self.proprietario_id})>'
+
+class PlantioAtivo(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    jogador_id = db.Column(db.Integer, db.ForeignKey('jogador.id'), nullable=False)
+    campo_id = db.Column(db.Integer, db.ForeignKey('campo_agricola.id'), nullable=False)
+    
+    # Regra 2: 1 hora de crescimento
+    data_fim = db.Column(db.DateTime, nullable=False) 
+    
+    # A quantidade final (já calculada com bônus) que será criada
+    quantidade_produzida = db.Column(db.Float, nullable=False) 
+    
+    jogador = db.relationship('Jogador', backref='plantios_ativos')
+    
+    def __repr__(self):
+        return f'<Plantio: {self.quantidade_produzida:.0f} Milho no Campo {self.campo_id}>'

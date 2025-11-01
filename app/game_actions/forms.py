@@ -21,3 +21,21 @@ class OpenCompanyForm(FlaskForm):
                             ])
                             
     submit = SubmitField('Confirmar Abertura')
+
+class OpenCampoForm(FlaskForm):
+    """Formulário para o jogador comprar um novo Campo Agrícola."""
+    
+    nome = StringField('Nome do Campo', validators=[
+        DataRequired(), 
+        Length(min=3, max=50, message='O nome deve ter entre 3 e 50 caracteres.')
+    ])
+    
+    # A taxa que o dono ganha quando outros plantam
+    taxa_lucro = FloatField('Sua Taxa de Lucro (Ex: 0.10 para 10%)', 
+                            default=0.10,
+                            validators=[
+                                DataRequired(),
+                                NumberRange(min=0.01, max=0.99, message='A taxa deve ser entre 0.01 e 0.99.')
+                            ])
+                            
+    submit = SubmitField('Comprar Campo')

@@ -2,10 +2,12 @@ from flask import redirect, url_for, flash, request, render_template, current_ap
 from flask_login import login_required, current_user
 from app import db
 from app.utils import calculate_distance_km, format_currency_python
-from app.models import Regiao, Jogador, ViagemAtiva, PedidoResidencia, Empresa, Armazem, ArmazemRecurso, HistoricoAcao, TransporteAtivo, Veiculo, RecursoNaMina
-from app.services import mining_service, player_service
+from app.models import (Regiao, Jogador, ViagemAtiva, PedidoResidencia, Empresa, 
+                        Armazem, ArmazemRecurso, HistoricoAcao, TransporteAtivo, 
+                        Veiculo, RecursoNaMina, CampoAgricola, PlantioAtivo)
+from app.services import mining_service, player_service, farming_service
 from app.game_actions import bp
-from app.game_actions.forms import OpenCompanyForm
+from app.game_actions.forms import OpenCompanyForm, OpenCampoForm
 from datetime import datetime, timedelta
 from math import ceil
 from config import Config
@@ -579,3 +581,105 @@ def start_transport():
         flash(f"Erro ao agendar transporte: {e}", "danger")
         
     return redirect(url_for('warehouse.view_warehouse'))
+
+@bp.route('/campo/open', methods=['GET', 'POST']) 
+@login_required
+def open_campo_view():
+    jogador = Jogador.query.get(current_user.id)
+    regiao = jogador.regiao_residencia 
+    form = OpenCampoForm()
+    
+    # Obter os custos (definido no Modelo Jogador, Fase 1)
+    custos = jogador.get_open_campo_cost()
+    custo_gold = custos['gold']
+    custo_money = custos['money']
+    
+    # --- VERIFICAÇÕES DE PRÉ-REQUISITOS ---
+    if regiao.id != jogador.regiao_residencia_id:
+        flash("Você só pode comprar campos na sua região de residência.", 'danger')
+        return redirect(url_for('work.work_dashboard'))
+    
+    if jogador.nivel < 2: # Regra 3 (1 campo a cada 2 níveis)
+        flash("Você deve atingir o Nível 2 para comprar seu primeiro campo.", 'danger')
+        return redirect(url_for('work.work_dashboard'))
+        
+    if len(jogador.campos_proprios) >= jogador.get_max_campos():
+        flash(f"Você atingiu o limite de {jogador.get_max_campos()} campos para o seu nível.", 'danger')
+        return redirect(url_for('work.work_dashboard'))
+        
+    if jogador.gold < custo_gold or jogador.dinheiro < custo_money:
+        msg = f"Você não tem fundos suficientes (Requer R$ {custo_money:,.0f} e G{custo_gold:.2f})."
+        flash(msg, 'danger')
+        return redirect(url_for('work.work_dashboard'))
+        
+    # --- PROCESSAMENTO DO POST ---
+    if form.validate_on_submit():
+        try:
+            jogador.gold -= custo_gold
+            jogador.dinheiro -= custo_money
+            
+            novo_campo = CampoAgricola(
+                regiao=regiao, 
+                nome=form.nome.data,
+                proprietario_id=jogador.id, 
+                taxa_lucro=form.taxa_lucro.data 
+            )
+            
+            db.session.add(novo_campo)
+            db.session.commit()
+            
+            flash(f"Parabéns! Seu campo '{novo_campo.nome}' foi comprado!", 'success')
+            return redirect(url_for('work.work_dashboard'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Erro fatal ao comprar campo: {e}", 'danger')
+            return redirect(url_for('work.work_dashboard'))
+            
+    # --- RENDERIZAÇÃO DO FORMULÁRIO (GET) ---
+    return render_template('game_actions/open_campo_form.html', 
+                           title='Comprar Novo Campo', 
+                           form=form,
+                           custos=custos, **footer)
+
+
+@bp.route('/plant_corn/<int:campo_id>', methods=['POST'])
+@login_required
+def plant_corn(campo_id):
+    jogador = Jogador.query.get(current_user.id)
+    campo = db.session.get(CampoAgricola, campo_id)
+    
+    if not campo:
+        flash("Campo agrícola não encontrado.", 'danger')
+        return redirect(url_for('work.work_dashboard'))
+        
+    if ViagemAtiva.query.filter_by(jogador_id=jogador.id).first():
+        flash("Você está em viagem e não pode plantar!", 'warning')
+        return redirect(url_for('map.view_map'))
+
+    try:
+        energia_gasta = int(request.form.get('energia_gasta', 0))
+    except ValueError:
+        flash("Valor de energia inválido.", 'danger')
+        return redirect(url_for('work.work_dashboard'))
+
+    try:
+        # --- CHAMA O SERVIÇO ---
+        success, message = farming_service.start_planting(
+            jogador=jogador,
+            campo=campo,
+            energia_gasta=energia_gasta
+        )
+        
+        if success:
+            db.session.commit()
+            flash(message, 'success')
+        else:
+            db.session.rollback() # Desfaz a cobrança de custos se o serviço falhou
+            flash(message, 'danger')
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Erro fatal ao plantar: {e}", 'danger')
+
+    return redirect(url_for('work.work_dashboard'))

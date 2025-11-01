@@ -88,6 +88,10 @@ def create_app(config_class=Config):
         'ARMAZEM_UPGRADE': 'Melhoria de Armazém',
         'TRANSPORTE_INICIO': 'Logística Agendada',
         'TRANSPORTE_CONCLUIDO': 'Transporte Concluído',
+        'VENDA_MERCADO': 'Venda (Mercado)',
+        'COMPRA_MERCADO': 'Compra (Mercado)',
+        'COLHEITA': 'Colheita',
+        'TAXA_COLHEITA': 'Taxa (Colheita)',
     }
 
     @app.context_processor

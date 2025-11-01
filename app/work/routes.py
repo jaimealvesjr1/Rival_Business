@@ -1,7 +1,7 @@
-from flask import render_template, redirect, url_for, flash
+from flask import render_template, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
 from app.work import bp
-from app.models import ViagemAtiva, RecursoNaMina, TransporteAtivo
+from app.models import ViagemAtiva, CampoAgricola
 from config import Config
 from datetime import datetime
 
@@ -34,10 +34,20 @@ def work_dashboard():
     fabricas_estatais = [e for e in empresas_na_regiao if e.tipo == 'estatal']
     fabricas_privadas = [e for e in empresas_na_regiao if e.tipo == 'privada']
 
+    campos_na_regiao = CampoAgricola.query.filter_by(regiao_id=regiao.id).all()
+    farm_slots_max = current_app.config['FARMING_FIELD_MAX_SLOTS']
+    farm_max_uses = current_app.config['FARMING_FIELD_MAX_USES']
+
     return render_template('work/work_dashboard.html',
                            title=f'Trabalho em {regiao.nome}',
                            jogador=jogador,
                            regiao=regiao,
                            fabricas_estatais=fabricas_estatais,
                            fabricas_privadas=fabricas_privadas,
-                           opcoes_energia=opcoes_energia, **footer)
+                           campos_na_regiao=campos_na_regiao,
+                           opcoes_energia=opcoes_energia,
+                           FARMING_COST_MONEY_PER_10_ENERGY=current_app.config['FARMING_COST_MONEY_PER_10_ENERGY'],
+                           FARMING_FIELD_MAX_SLOTS=current_app.config['FARMING_FIELD_MAX_SLOTS'],
+                           FARMING_FIELD_MAX_USES=current_app.config['FARMING_FIELD_MAX_USES'],
+                           farm_slots_max=farm_slots_max,
+                           farm_max_uses=farm_max_uses, **footer)

@@ -60,3 +60,11 @@ class Config:
     RECURSO_NA_MINA_EXPIRACAO_MIN = 360
 
     MARKET_ORDER_DURATION_HOURS = 72 # Ordens expiram em 3 dias
+
+    FARMING_COST_MONEY_PER_10_ENERGY = 1000.0  # Custo (R$) para plantar (Regra 1)
+    FARMING_GROW_TIME_MINUTES = 60            # Tempo de crescimento (Regra 2)
+    FARMING_FIELD_MAX_SLOTS = 2               # Slots por campo (Regra 4)
+    FARMING_FIELD_MAX_USES = 6                # Usos antes do descanso
+    FARMING_FIELD_REST_HOURS = 6              # Horas de descanso
+    MILHO_POR_ENERGIA = 2.0                   # 2t de Milho por 10 Energia (Base)
+    FARMING_XP_PER_10_ENERGY = 15.0           # XP de trabalho ganho (15 XP por 10 E)
