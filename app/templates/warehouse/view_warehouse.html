@@ -180,8 +180,8 @@
             </ul>
 
             {# --- RECURSOS NA MINA --- #}
-            <h2 class="mt-4"><i class="fas fa-box-open me-2"></i>Aguardando Frete</h2>
             {% if recursos_para_coleta %}
+            <h2 class="mt-4"><i class="fas fa-box-open me-2"></i>Aguardando Frete</h2>
             <div class="row">
                 {% for recurso in recursos_para_coleta %}
                 
@@ -252,7 +252,6 @@
                 {% endfor %}
             </div>
             {% else %}
-            <div class="alert alert-info mt-4">Não há recursos esperando por frete.</div>
             {% endif %}
 
         </div>

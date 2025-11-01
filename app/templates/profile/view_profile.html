@@ -74,7 +74,7 @@
                 {% set xp_progress = jogador.experiencia / xp_needed * 100 %}
 
                 <p class="mb-1">
-                    <strong>Experiência Geral:</strong> 
+                    <strong>Experiência:</strong> 
                     {{ jogador.experiencia | currency_format('', separator='.') }} / 
                     {{ xp_needed | currency_format('', separator='.') }}
                     <small>(XP total para o Nv. {{ jogador.nivel + 1 }})</small>

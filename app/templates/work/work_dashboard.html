@@ -92,10 +92,10 @@
 </div>    
 
 {# --- SEÇÃO DE EMPRESAS PRIVADAS (Com Formulário em Details) --- #}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="form-group mt-4"><i class="fas fa-building me-2"></i>Empresas Privadas</h2>
+<h2 class="form-group mt-4"><i class="fas fa-building me-2"></i>Empresas Privadas</h2>
+<div class="d-flex justify-content-between align-items-center mb-2 mt-2">
     <div class="btn-group">
-        <details>
+        <details class="col-md-12 text-dark">
             <summary class="btn btn-success 
                 {% if not pode_abrir or limite_atingido or not residente %}disabled{% endif %}">
                 <i class="fas fa-plus me-1"></i> Abrir Empresa
@@ -107,11 +107,9 @@
                 <div class="alert alert-primary mb-3 small">
                     <p class="mb-0">
                         <strong><i class="fas fa-hand-holding-usd me-1"></i> Custo de Abertura:</strong> 
-                        R$ {{ custos.money | currency_format('', '.') }} 
-                        <span class="badge bg-success ms-2">{% if jogador.dinheiro >= custos.money %}Dinheiro OK{% else %}❌{% endif %}</span>
+                        R$ {{ custos.money | currency_format('', '.') }} {% if jogador.dinheiro >= custos.money %}✅{% else %}❌{% endif %}
                         
-                        e G{{ custos.gold | currency_format('', separator='') }}
-                        <span class="badge bg-warning ms-2">{% if jogador.gold >= custos.gold %}Gold OK{% else %}❌{% endif %}</span>
+                        e Gold:{{ custos.gold | currency_format('', separator='') }}Kg {% if jogador.gold >= custos.gold %}✅{% else %}❌{% endif %}
                     </p>
                 </div>
                 
@@ -215,7 +213,7 @@
 <p>Nenhuma empresa privada nesta localização.</p>
 {% endif %}
 <div class="alert alert-secondary small">
-    **Requisitos para Abrir Empresa Privada:**
+    Requisitos para Abrir Empresa Privada:
     <ul class="mb-0">
         <li><i class="fas fa-level-up-alt"></i> Nível Mínimo (Nv 5): <strong>{% if jogador.nivel >= 5 %}✅{% else %}❌{% endif %}</strong></li>
         <li><i class="fas fa-home"></i> Residência na Localização: <strong>{% if residente %}✅{% else %}❌{% endif %}</strong></li>
@@ -224,10 +222,9 @@
     </ul>
 </div>
 
-{# --- SEÇÃO DE CAMPOS AGRÍCOLAS (Com Formulário em Details e Barra de Progresso) --- #}
-
-<div class="d-flex justify-content-between align-items-center mb-4 mt-5">
-    <h2 class="mb-3 mt-4"><i class="fas fa-leaf me-2"></i>Campos Agrícolas</h2>
+{# --- SEÇÃO DE Fazendas Agrícolas (Com Formulário em Details e Barra de Progresso) --- #}
+<h2 class="mb-3 mt-4"><i class="fas fa-leaf me-2"></i>Fazendas Agrícolas</h2>
+<div class="d-flex justify-content-between align-items-center mb-2 mt-2">
     <div class="btn-group">
         {% set custos_campo = jogador.get_open_campo_cost() %}
         {% set pode_comprar_campo = (jogador.dinheiro >= custos_campo.money and 
@@ -235,22 +232,19 @@
                                    jogador.nivel >= 2 and 
                                    jogador.campos_proprios | length < jogador.get_max_campos()) %}
                                    
-        <details>
+        <details class="col-md-12 text-dark">
             <summary class="btn btn-success {% if not pode_comprar_campo %}disabled{% endif %}">
                 <i class="fas fa-plus me-1"></i> Comprar Campo
             </summary>
             {# CONTEÚDO DO open_campo_form.html AGORA INCORPORADO #}
             <div class="card card-body mt-2">
-                <p class="lead">Compre seu primeiro pedaço de terra e comece a plantar.</p>
+                <p class="lead">Compre seu pedaço de terra e comece a plantar.</p>
                 
-                <div class="alert alert-primary text-dark mb-3 small">
+                <div class="alert alert-primary mb-3 small">
                     <p class="mb-0">
                         <strong><i class="fas fa-hand-holding-usd me-1"></i> Custo de Compra:</strong> 
-                        R$ {{ custos_campo.money | currency_format('', '.') }} 
-                        <span class="badge bg-success ms-2">{% if jogador.dinheiro >= custos_campo.money %}Dinheiro OK{% else %}❌{% endif %}</span>
-                        
-                        e G{{ custos_campo.gold | currency_format('', separator='') }}
-                        <span class="badge bg-warning ms-2">{% if jogador.gold >= custos_campo.gold %}Gold OK{% else %}❌{% endif %}</span>
+                        R$ {{ custos_campo.money | currency_format('', '.') }} {% if jogador.dinheiro >= custos_campo.money %}✅{% else %}❌{% endif %}
+                        e Gold: {{ custos_campo.gold | currency_format('', separator='') }}Kg {% if jogador.gold >= custos_campo.gold %}✅{% else %}❌{% endif %}
                     </p>
                 </div>
                 
@@ -271,7 +265,7 @@
                     </div>
                     
                     <button type="submit" class="btn btn-success mt-3" {% if not pode_comprar_campo %}disabled{% endif %}>
-                        <i class="fas fa-cash-register me-1"></i> Comprar Campo
+                        <i class="fas fa-cash-register me-1"></i> Comprar
                     </button>
                 </form>
             </div>
@@ -367,11 +361,11 @@
     {% endfor %}
 </div>
 {% else %}
-<p>Nenhum campo agrícola nesta localização.</p>
+<p>Nenhuma fazenda agrícola nesta localização.</p>
 {% endif %}
 
 <div class="alert alert-secondary small">
-    **Requisitos para Comprar Campo Agrícola:**
+    Requisitos para Comprar Fazenda Agrícola:
     <ul class="mb-0">
         <li><i class="fas fa-level-up-alt"></i> Nível Mínimo (Nv 2): <strong>{% if jogador.nivel >= 2 %}✅{% else %}❌{% endif %}</strong></li>
         <li><i class="fas fa-home"></i> Residência na Localização: <strong>{% if residente %}✅{% else %}❌{% endif %}</strong></li>

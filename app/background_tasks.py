@@ -417,8 +417,8 @@ def clean_expired_resources(app):
 
         if expired_resources:
             for recurso in expired_resources:
-                # Opcional: Adicionar log para saber o que foi deletado
-                print(f"[{datetime.now().strftime('%H:%M:%S')}] RECURSO EXPIRADO: {recurso.quantidade:.0f}t de {recurso.tipo} de Jogador {recurso.jogador_id} deletado.")
+                # CORREÇÃO: Usar 'tipo_recurso' em vez de 'tipo'
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] RECURSO EXPIRADO: {recurso.quantidade:.0f}t de {recurso.tipo_recurso} de Jogador {recurso.jogador_id} deletado.")
                 db.session.delete(recurso)
             
             try:
@@ -507,7 +507,7 @@ def cleanup_expired_market_orders(app):
                         db.session.add(recurso)
                         
                 elif order.order_type == 'BUY':
-                    # A ordem era de COMPRA. Devolve o DINHEIRO reservado.
+                    # Devolve dinheiro reservado
                     custo_reservado = order.quantity_remaining * order.price_per_unit
                     order.jogador.dinheiro_reservado = max(0, order.jogador.dinheiro_reservado - custo_reservado)
                     db.session.add(order.jogador)

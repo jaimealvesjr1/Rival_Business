@@ -25,7 +25,7 @@ class OpenCompanyForm(FlaskForm):
 class OpenCampoForm(FlaskForm):
     """Formulário para o jogador comprar um novo Campo Agrícola."""
     
-    nome = StringField('Nome do Campo', validators=[
+    nome = StringField('Nome da Fazenda', validators=[
         DataRequired(), 
         Length(min=3, max=50, message='O nome deve ter entre 3 e 50 caracteres.')
     ])
