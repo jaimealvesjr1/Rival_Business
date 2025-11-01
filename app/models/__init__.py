@@ -21,6 +21,7 @@ class Jogador(db.Model, UserMixin):
     
     # Recursos e Atributos Iniciais
     dinheiro = db.Column(db.Float, default=1000.00)
+    dinheiro_reservado = db.Column(db.Float, nullable=False, default=0.0, server_default='0.0')
     gold = db.Column(db.Float, default=5.00)
     energia = db.Column(db.Integer, default=200) 
     nivel = db.Column(db.Integer, default=1)
@@ -133,8 +134,8 @@ class Jogador(db.Model, UserMixin):
         
         multiplicador = 1.2 ** current_level # Usa o nível atual (float)
         
-        custo_money = round(base_money * multiplicador, 0) # Arredondado para R$
-        custo_gold = round(base_gold * multiplicador, 2)
+        custo_money = round(base_money * multiplicador, 0)
+        custo_gold = round(base_gold + (current_level * 0.5), 2)
         tempo_minutos = round(base_time_minutes * multiplicador)
 
         # 2. Determinar o Efeito Visual
@@ -361,7 +362,7 @@ class Armazem(db.Model):
         multiplicador = 1.2 ** (nivel_atual - 1)
         
         custo_money = round(base_money * multiplicador, 2)
-        custo_gold = round(base_gold * multiplicador, 2)
+        custo_gold = round(base_gold + (nivel_atual * 1.0), 2)
         tempo_minutos = round(base_time_minutes * multiplicador)
         
         return {'money': custo_money, 'gold': custo_gold, 'time_minutes': tempo_minutos}
@@ -389,7 +390,7 @@ class Armazem(db.Model):
         # Verifica se o próximo nível desbloqueia uma vaga extra (a cada 5 níveis)
         desbloqueia_vaga = (proximo_nivel % 5 == 0) 
         
-        effect = f"+1 Vaga de Frota"
+        effect = f"+1 Vaga de Frota a cada 5 níveis"
         if desbloqueia_vaga:
             effect += f" (+1 Vaga de Frota Total: {self.get_max_frota() + 1})"
             
@@ -440,6 +441,7 @@ class Armazem(db.Model):
 class ArmazemRecurso(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     armazem_id = db.Column(db.Integer, db.ForeignKey('armazem.id'), nullable=False)
+    quantidade_reservada = db.Column(db.Float, nullable=False, default=0.0, server_default='0.0')
     
     # Tipo de Recurso (e.g., 'ferro', 'petroleo')
     tipo = db.Column(db.String(50), nullable=False)
@@ -528,19 +530,21 @@ class RecursoNaMina(db.Model):
     def __repr__(self):
         return f'<RecursoNaMina: {self.quantidade:.0f} {self.tipo_recurso} em Região {self.regiao_id}>'
 
-class PrecoMercado(db.Model):
+class MarketOrder(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    jogador_id = db.Column(db.Integer, db.ForeignKey('jogador.id'), nullable=False)
+    regiao_id = db.Column(db.Integer, db.ForeignKey('regiao.id'), nullable=False) # Local onde a ordem foi criada (para imposto)
     
-    # Recurso (ouro ou ferro)
-    tipo_recurso = db.Column(db.String(50), unique=True, nullable=False) 
+    order_type = db.Column(db.String(4), nullable=False) # 'SELL' (venda) ou 'BUY' (compra)
+    resource_type = db.Column(db.String(50), nullable=False) # 'ferro', 'gold', etc.
     
-    # Preço de COMPRA (Quanto o jogador PAGA em Dinheiro R$ por 1 unidade)
-    preco_compra_dinheiro = db.Column(db.Float, default=1000.0) 
+    quantity = db.Column(db.Float, nullable=False) # Quantidade inicial
+    quantity_remaining = db.Column(db.Float, nullable=False) # Quanto ainda falta
+    price_per_unit = db.Column(db.Float, nullable=False)
     
-    # Preço de VENDA (Quanto o jogador RECEBE em Dinheiro R$ por 1 unidade)
-    preco_venda_dinheiro = db.Column(db.Float, default=950.0)
-    
-    # Regra: O preço de venda é sempre menor que o preço de compra (spread de 5% no exemplo)
+    status = db.Column(db.String(10), default='ACTIVE') # ACTIVE, COMPLETED, CANCELLED, EXPIRED
+    data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
+    data_expiracao = db.Column(db.DateTime, nullable=False)
 
-    def __repr__(self):
-        return f'<Preço: {self.tipo_recurso.capitalize()} - Compra R${self.preco_compra_dinheiro}>'
+    jogador = db.relationship('Jogador', backref='market_orders')
+    regiao = db.relationship('Regiao')

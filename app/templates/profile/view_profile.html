@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <h1 class="mt-4">Perfil de {{ jogador.username }}</h1>
+    <p class="lead">Visualize as informações sobre seu personagem.</p>
 
 <div class="row">
     <div class="col-md-6">
@@ -76,7 +77,7 @@
                     <hr class="my-2">
                     <div class="row small">
                         <div class="col-md-3">
-                            <strong class="text-primary">Índice de Desenvolvimento:</strong><br>{{ "%.0f"|format(jogador.regiao_atual.indice_desenvolvimento) }} / 10
+                            <strong class="text-primary">Índice de Dev.:</strong><br>{{ "%.0f"|format(jogador.regiao_atual.indice_desenvolvimento) }} / 10
                         </div>
                         <div class="col-md-3">
                             <strong class="text-secondary">Índice de<br>Saúde:</strong><br>{{ "%.0f"|format(jogador.regiao_atual.indice_saude * 10) }} / 10
@@ -214,7 +215,10 @@
                 {% else %}
                     <p class="mb-1"><strong>Melhoria:</strong> Nível {{ "%.0f"|format(info.next_level) }}</p>
                     <p class="mb-1"><strong>Efeito:</strong> {{ info.effect }}</p>
-                    <p class="mb-1"><strong>Custo:</strong> {{ info.money | currency_format('R$', '.') }} e Gold: {{ "%.2f"|format(info.gold) }}Kg</p>
+                    <p class="mb-1"><strong>Dinheiro:</strong> {{ info.money | currency_format('R$', '.') }}
+                            {% if jogador.dinheiro >= info.money %}✅{% else %}❌{% endif %}</p>
+                    <p class="mb-1"><strong>Gold:</strong> {{ "%.2f"|format(info.gold) }} Kg
+                            {% if jogador.gold >= info.gold %}✅{% else %}❌{% endif %}</p>
                     <p class="mb-1"><strong>Tempo:</strong> {{ info.time }} minutos</p>
                     <hr class="my-2">
                     <form method="POST" action="{{ url_for('skill_development.train_skill', skill_key=skill_key) }}">

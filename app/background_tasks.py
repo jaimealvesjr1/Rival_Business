@@ -1,6 +1,7 @@
 from flask import current_app
 from app import db
-from app.models import Jogador, TreinamentoAtivo, Regiao, RecursoNaMina, Veiculo, HistoricoAcao
+from app.models import (Jogador, TreinamentoAtivo, Regiao, RecursoNaMina, 
+                        Veiculo, HistoricoAcao, MarketOrder, ArmazemRecurso)
 from datetime import datetime, timedelta
 from sqlalchemy.orm import joinedload
 
@@ -369,3 +370,56 @@ def run_core_status_updates(app):
     
     # 3. Limpeza de Recursos Expirados (Manutenção)
     clean_expired_resources(app)
+
+def cleanup_expired_market_orders(app):
+    """
+    Encontra ordens de mercado expiradas (status ATIVO mas data_expiracao passou)
+    e devolve o escrow (dinheiro ou itens) para o criador da ordem.
+    """
+    with app.app_context():
+        from app import db
+        
+        expired_orders = MarketOrder.query.filter(
+            MarketOrder.status == 'ACTIVE',
+            MarketOrder.data_expiracao <= datetime.utcnow()
+        ).all()
+        
+        if not expired_orders:
+            # Nada a fazer
+            return
+
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] Limpando {len(expired_orders)} ordens de mercado expiradas...")
+        
+        for order in expired_orders:
+            order.status = 'EXPIRED'
+            
+            try:
+                if order.order_type == 'SELL':
+                    # A ordem era de VENDA. Devolve os ITENS reservados.
+                    recurso = ArmazemRecurso.query.filter_by(
+                        armazem_id=order.jogador.armazem.id,
+                        tipo=order.resource_type
+                    ).first()
+                    
+                    if recurso:
+                        recurso.quantidade_reservada = max(0, recurso.quantidade_reservada - order.quantity_remaining)
+                        db.session.add(recurso)
+                        
+                elif order.order_type == 'BUY':
+                    # A ordem era de COMPRA. Devolve o DINHEIRO reservado.
+                    custo_reservado = order.quantity_remaining * order.price_per_unit
+                    order.jogador.dinheiro_reservado = max(0, order.jogador.dinheiro_reservado - custo_reservado)
+                    db.session.add(order.jogador)
+                    
+                db.session.add(order)
+                
+            except Exception as e:
+                print(f"Erro ao processar expiração da Ordem ID {order.id}: {e}")
+                # Não paramos o loop, tentamos a próxima
+        
+        try:
+            db.session.commit()
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] Limpeza de ordens concluída.")
+        except Exception as e:
+            db.session.rollback()
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] Erro ao commitar limpeza de ordens: {e}")

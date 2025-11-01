@@ -7,7 +7,8 @@
 {% set limite_atingido = jogador.empresas_proprias | length >= jogador.get_max_empresas() %}
 {% set residente = regiao.id == jogador.regiao_residencia_id %}
 
-<h1 class="mt-4">Trabalho - {{ regiao.nome }}</h1>    
+<h1 class="mt-4">Trabalho - {{ regiao.nome }}</h1>
+    <p class="lead">Busque recursos e desenvolva suas empresas.</p>    
 
 <div class="card mb-4 bg-light">
     <div class="card-body">
@@ -86,7 +87,6 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2 class="mb-3 mt-4">Empresas Privadas</h2>
     <div class="btn-group">
-        <a class="btn btn-success text-white mr-2">Procurar Empresa</a>
         <a href="{{ url_for('game_actions.open_company_view') }}" class="btn btn-success 
             {% if not pode_abrir or limite_atingido or not residente %}disabled{% endif %}" 
             role="button">
@@ -115,7 +115,7 @@
                     <p class="mb-1">Caixa da Empresa: {{ empresa.dinheiro | currency_format('R$', '.') }}</p>
                     
                     {# FORMULÁRIO DE AJUSTE DE TAXA (MANTIDO) #}
-                    <form method="POST" action="{{ url_for('game_actions.adjust_tax', empresa_id=empresa.id) }}" class="form-inline mt-2">
+                    <form method="POST" action="{{ url_for('game_actions.adjust_tax', empresa_id=empresa.id) }}" class="d-flex align-items-center mt-2">
                         <button type="submit" class="btn btn-sm btn-primary">Ajustar Taxa</button>
                     </form>
                     
@@ -123,8 +123,8 @@
                     
                     {# FORMULÁRIO DE TRABALHO DO PROPRIETÁRIO #}
                     <p class="mb-1">Trabalhar:</p>
-                    <form method="POST" action="{{ url_for(route_name, empresa_id=empresa.id) }}" class="form-inline mt-2">
-                        <div class="form-group mr-2">
+                    <form method="POST" action="{{ url_for(route_name, empresa_id=empresa.id) }}" class="d-flex align-items-center mt-2">
+                        <div class="form-group me-2">
                             <select class="form-control form-control-sm" name="energia_gasta" id="energia_gasta_owner_{{ empresa.id }}">
                                 {% for i in opcoes_energia %}
                                     <option value="{{ i }}">-{{ i }} E</option>
@@ -143,7 +143,7 @@
                     <p class="mb-1">Lucro do Trabalhador: <strong>{{ ((1 - empresa.taxa_lucro) * 100)|round(0) }}%</strong></p>
                     
                     <form method="POST" action="{{ url_for(route_name, empresa_id=empresa.id) }}" class="form-inline mt-3">
-                        <div class="form-group mr-2">
+                        <div class="form-group me-2">
                             <select class="form-control form-control-sm" name="energia_gasta" id="energia_gasta_private_{{ empresa.id }}">
                                 {% for i in opcoes_energia %}
                                     <option value="{{ i }}">-{{ i }} E</option>

@@ -2,72 +2,145 @@ from flask import render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from app import db
 from app.market import bp
-from app.models import Jogador, PrecoMercado, ArmazemRecurso, HistoricoAcao
-from app.utils import format_currency_python
+from app.models import Jogador, MarketOrder
+from app.market.forms import MarketOrderForm
+from app.services import market_service
 from config import Config
-from math import floor
+from sqlalchemy import or_
 
 footer = {'ano': Config.ANO_ATUAL, 'versao': Config.VERSAO_APP}
 
-# ------------------------------------------------------------------
-# ROTA PRINCIPAL: VISUALIZAÇÃO DO MERCADO
-# ------------------------------------------------------------------
-@bp.route('/')
+@bp.route('/', methods=['GET', 'POST'])
 @login_required
 def view_market():
     jogador = Jogador.query.get(current_user.id)
+    form = MarketOrderForm()
+
+    # --- Lógica de CRIAR ORDEM (POST) ---
+    if form.validate_on_submit():
+        # Verifica qual botão foi pressionado
+        try:
+            if form.submit_sell.data:
+                # --- Criar Ordem de VENDA ---
+                success, message = market_service.create_sell_order(
+                    creator_jogador=jogador,
+                    resource_type=form.resource_type.data,
+                    quantity=form.quantity.data,
+                    price_per_unit=form.price_per_unit.data
+                )
+            elif form.submit_buy.data:
+                # --- Criar Ordem de COMPRA ---
+                success, message = market_service.create_buy_order(
+                    creator_jogador=jogador,
+                    resource_type=form.resource_type.data,
+                    quantity=form.quantity.data,
+                    price_per_unit=form.price_per_unit.data
+                )
+            else:
+                success = False
+                message = "Ação de formulário inválida."
+
+            if success:
+                db.session.commit()
+                flash(message, 'success')
+            else:
+                db.session.rollback() # Desfaz o escrow se o serviço falhou
+                flash(message, 'danger')
+                
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Erro ao processar ordem: {e}", 'danger')
+            
+        return redirect(url_for('market.view_market'))
+
+    # --- Lógica de MOSTRAR MERCADO (GET) ---
     
-    # Obter preços e recursos
-    precos = PrecoMercado.query.all()
-    recursos_armazem = {r.tipo: r for r in jogador.armazem.recursos.all()}
+    # 1. Ordens de Venda (As mais baratas primeiro)
+    sell_orders = MarketOrder.query.filter(
+        MarketOrder.order_type == 'SELL',
+        MarketOrder.status == 'ACTIVE',
+        MarketOrder.jogador_id != jogador.id # Não mostrar suas próprias ordens de venda
+    ).order_by(MarketOrder.price_per_unit.asc()).all()
+
+    # 2. Ordens de Compra (As mais caras primeiro)
+    buy_orders = MarketOrder.query.filter(
+        MarketOrder.order_type == 'BUY',
+        MarketOrder.status == 'ACTIVE',
+        MarketOrder.jogador_id != jogador.id # Não mostrar suas próprias ordens de compra
+    ).order_by(MarketOrder.price_per_unit.desc()).all()
+
+    # 3. Minhas Ordens Ativas
+    my_active_orders = MarketOrder.query.filter(
+        MarketOrder.jogador_id == jogador.id,
+        MarketOrder.status == 'ACTIVE'
+    ).order_by(MarketOrder.data_criacao.desc()).all()
+    
+    # 4. Saldo Disponível (calculando o que está reservado)
+    recursos_armazem = {r.tipo: (r.quantidade - r.quantidade_reservada) for r in jogador.armazem.recursos.all()}
+    dinheiro_disponivel = jogador.dinheiro - jogador.dinheiro_reservado
 
     return render_template('market/view_market.html',
-                           title='Mercado Global',
+                           title='Mercado P2P',
                            jogador=jogador,
-                           precos=precos,
-                           recursos_armazem=recursos_armazem, **footer)
+                           form=form,
+                           sell_orders=sell_orders,
+                           buy_orders=buy_orders,
+                           my_active_orders=my_active_orders,
+                           recursos_armazem=recursos_armazem,
+                           dinheiro_disponivel=dinheiro_disponivel,
+                           **footer)
 
-# ------------------------------------------------------------------
-# ROTA DE AÇÃO: COMPRA/VENDA (Exemplo: Vender Minério de Ferro)
-# ------------------------------------------------------------------
-@bp.route('/sell/<string:recurso_tipo>', methods=['POST'])
+@bp.route('/fill/<int:order_id>', methods=['POST'])
 @login_required
-def sell_resource(recurso_tipo):
+def fill_order(order_id):
     jogador = Jogador.query.get(current_user.id)
     
-    # Obter dados do formulário
-    quantidade = request.form.get('quantidade', type=float)
-    if not quantidade or quantidade <= 0:
-        flash("Quantidade inválida.", 'danger')
-        return redirect(url_for('market.view_market'))
-        
-    preco_info = PrecoMercado.query.filter_by(tipo_recurso=recurso_tipo).first()
-    recurso_armazem = jogador.armazem.recursos.filter_by(tipo=recurso_tipo).first()
-    
-    if not preco_info or not recurso_armazem or recurso_armazem.quantidade < quantidade:
-        flash(f"Recurso '{recurso_tipo.capitalize()}' não encontrado ou saldo insuficiente.", 'danger')
-        return redirect(url_for('market.view_market'))
-        
     try:
-        # 1. Cálculo do Ganho e Atualização do Armazém
-        ganho_total = quantidade * preco_info.preco_venda_dinheiro
-        jogador.dinheiro += ganho_total
-        recurso_armazem.quantidade -= quantidade
-        
-        # 2. Histórico
-        descricao = f"Vendeu {quantidade:.0f}t de {recurso_tipo.capitalize()} por {format_currency_python(ganho_total)}."
-        hist = HistoricoAcao(
-            jogador_id=jogador.id, tipo_acao='VENDA_RECURSO',
-            descricao=descricao, dinheiro_delta=ganho_total, gold_delta=0.0
+        # A quantidade vem do formulário da tabela
+        quantity_to_fill = request.form.get('quantity', type=float)
+        if not quantity_to_fill or quantity_to_fill <= 0:
+            flash("Quantidade para negociar inválida.", 'danger')
+            return redirect(url_for('market.view_market'))
+            
+        success, message = market_service.fill_order(
+            taker_jogador=jogador,
+            order_id=order_id,
+            quantity_to_fill=quantity_to_fill
         )
         
-        db.session.add_all([jogador, recurso_armazem, hist])
-        db.session.commit()
-        
-        flash(f"Venda concluída! Ganhou {format_currency_python(ganho_total)}.", 'success')
-        
+        if success:
+            db.session.commit()
+            flash(message, 'success')
+        else:
+            db.session.rollback()
+            flash(message, 'danger')
+            
     except Exception as e:
         db.session.rollback()
-        flash(f"Erro ao vender recurso: {e}", 'danger')
+        flash(f"Erro ao processar transação: {e}", 'danger')
+
+    return redirect(url_for('market.view_market'))
+
+@bp.route('/cancel/<int:order_id>', methods=['POST'])
+@login_required
+def cancel_order(order_id):
+    jogador = Jogador.query.get(current_user.id)
+    
+    try:
+        success, message = market_service.cancel_order(
+            jogador=jogador,
+            order_id=order_id
+        )
         
+        if success:
+            db.session.commit()
+            flash(message, 'success')
+        else:
+            db.session.rollback()
+            flash(message, 'danger')
+            
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Erro ao cancelar ordem: {e}", 'danger')
+
     return redirect(url_for('market.view_market'))

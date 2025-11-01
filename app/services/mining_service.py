@@ -9,7 +9,7 @@ from math import ceil
 def get_money_production(xp_trabalho):
     """Calcula o valor total em dinheiro gerado pela ação, escalado pela XP."""
     # Esta função estava no app/game_actions/routes.py
-    base_production = 50000 
+    base_production = 5000 
     xp_max_level = current_app.config['XP_MAX_LEVEL']
     multiplicador = (1 + (xp_trabalho / xp_max_level) * 59.2) # Ajuste linear simplificado
 
@@ -146,7 +146,7 @@ def mine_iron_action(jogador: Jogador, empresa: Empresa, regiao: Regiao, energia
         tipo_recurso='ferro'
     ).first()
     
-    tempo_limite = current_app.config['TEMPO_LIMITE_PLANEJAMENTO_MIN']
+    tempo_limite = current_app.config['RECURSO_NA_MINA_EXPIRACAO_MIN']
     
     if not recurso_mina:
         recurso_mina = RecursoNaMina(

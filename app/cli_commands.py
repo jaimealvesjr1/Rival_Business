@@ -1,7 +1,7 @@
 import click
 from flask.cli import with_appcontext
 from app import db
-from app.models import Jogador, Regiao, Empresa, Armazem, Veiculo, TipoVeiculo, PrecoMercado
+from app.models import Jogador, Regiao, Empresa, Armazem, Veiculo, TipoVeiculo
 
 # Este decorador registra o comando 'flask init-db'
 @click.command('init-db')
@@ -30,31 +30,13 @@ def init_db_command():
         {'nome': 'Mina de Ferro', 'tipo_produto': 'ferro', 'taxa_lucro': 0.30},
     ]
     modelos_veiculos = [
-        {'tipo': 'caminhao_3_4', 'display': 'Caminhão 3/4', 'cap': 3, 'vel': 1.0, 'custo_tk': 808, 'validade': 4, 'nivel_req': 1, 'ferro': 25, 'money': 50000, 'gold': 5},
-        {'tipo': 'caminhao_toco', 'display': 'Caminhão Toco', 'cap': 6, 'vel': 0.9, 'custo_tk': 551, 'validade': 5, 'nivel_req': 5, 'ferro': 120, 'money': 150000, 'gold': 15},
-        {'tipo': 'caminhao_truck', 'display': 'Caminhão Truck', 'cap': 16, 'vel': 0.8, 'custo_tk': 313, 'validade': 6, 'nivel_req': 10, 'ferro': 240, 'money': 400000, 'gold': 40},
-        {'tipo': 'carreta', 'display': 'Carreta', 'cap': 35, 'vel': 0.6, 'custo_tk': 173, 'validade': 7, 'nivel_req': 15, 'ferro': 500, 'money': 750000, 'gold': 75},
-        {'tipo': 'bitrem', 'display': 'Bitrem', 'cap': 45, 'vel': 0.5, 'custo_tk': 157, 'validade': 7, 'nivel_req': 20, 'ferro': 800, 'money': 1000000, 'gold': 100},
-        {'tipo': 'rodotrem', 'display': 'Rodotrem', 'cap': 55, 'vel': 0.5, 'custo_tk': 144, 'validade': 8, 'nivel_req': 25, 'ferro': 1000, 'money': 1500000, 'gold': 150},
+        {'tipo': 'caminhao_3_4', 'display': 'Caminhão 3/4', 'cap': 3, 'vel': 1.0, 'custo_tk': 10.0, 'validade': 4, 'nivel_req': 1, 'ferro': 25, 'money': 50000, 'gold': 5},
+        {'tipo': 'caminhao_toco', 'display': 'Caminhão Toco', 'cap': 6, 'vel': 0.9, 'custo_tk': 8.0, 'validade': 5, 'nivel_req': 5, 'ferro': 120, 'money': 150000, 'gold': 15},
+        {'tipo': 'caminhao_truck', 'display': 'Caminhão Truck', 'cap': 16, 'vel': 0.8, 'custo_tk': 6.0, 'validade': 6, 'nivel_req': 10, 'ferro': 240, 'money': 400000, 'gold': 40},
+        {'tipo': 'carreta', 'display': 'Carreta', 'cap': 35, 'vel': 0.6, 'custo_tk': 4.0, 'validade': 7, 'nivel_req': 15, 'ferro': 500, 'money': 750000, 'gold': 75},
+        {'tipo': 'bitrem', 'display': 'Bitrem', 'cap': 45, 'vel': 0.5, 'custo_tk': 3.0, 'validade': 7, 'nivel_req': 20, 'ferro': 800, 'money': 1000000, 'gold': 100},
+        {'tipo': 'rodotrem', 'display': 'Rodotrem', 'cap': 55, 'vel': 0.5, 'custo_tk': 2.5, 'validade': 8, 'nivel_req': 25, 'ferro': 1000, 'money': 1500000, 'gold': 150},
     ]
-    precos_iniciais = [
-        {'tipo_recurso': 'ferro', 'compra': 15000.00, 'venda': 14000.00},
-        {'tipo_recurso': 'gold', 'compra': 1100.00, 'venda': 1000.00} 
-    ]
-
-    novos_precos_criados = 0
-    for preco in precos_iniciais:
-        if not PrecoMercado.query.filter_by(tipo_recurso=preco['tipo_recurso']).first():
-            db.session.add(PrecoMercado(
-                tipo_recurso=preco['tipo_recurso'],
-                preco_compra_dinheiro=preco['compra'],
-                preco_venda_dinheiro=preco['venda']
-            ))
-            novos_precos_criados += 1
-            
-    if novos_precos_criados > 0:
-        db.session.commit()
-        print(f"SUCESSO: {novos_precos_criados} Preços de Mercado adicionados.")
 
     novos_tipos_criados = 0
     for modelo in modelos_veiculos:

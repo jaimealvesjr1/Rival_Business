@@ -2,8 +2,9 @@ from flask import render_template, redirect, url_for, flash
 from flask_login import login_required, current_user
 from app.warehouse import bp
 from app import db
-from app.models import Jogador, Veiculo, ArmazemRecurso, TipoVeiculo, Armazem, TreinamentoAtivo, TransporteAtivo, HistoricoAcao, RecursoNaMina
+from app.models import Jogador, Veiculo, ArmazemRecurso, TipoVeiculo, Armazem, TreinamentoAtivo, TransporteAtivo, HistoricoAcao, RecursoNaMina, Regiao
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import func
 from datetime import datetime, timedelta
 from config import Config
 
@@ -51,16 +52,29 @@ def view_warehouse():
             tempo_total_restante = int(tempo_restante_dt.total_seconds())
 
     # 1. Carregar Recursos na Mina (aguardando frete)
-    recursos_mina = RecursoNaMina.query.filter_by(jogador_id=jogador.id).all()
-    recursos_por_regiao = {}
+    recursos_agrupados_query = db.session.query(
+        RecursoNaMina.regiao_id,
+        RecursoNaMina.tipo_recurso,
+        func.sum(RecursoNaMina.quantidade).label('total_quantidade'),
+        func.min(RecursoNaMina.data_expiracao).label('proxima_expiracao'),
+        Regiao.nome.label('regiao_nome')
+    ).join(Regiao, Regiao.id == RecursoNaMina.regiao_id)\
+     .filter(RecursoNaMina.jogador_id == jogador.id)\
+     .group_by(RecursoNaMina.regiao_id, RecursoNaMina.tipo_recurso, Regiao.nome)\
+     .order_by(func.min(RecursoNaMina.data_expiracao).asc())\
+     .all()
 
-    for recurso in recursos_mina:
-        tempo_restante_exp = (recurso.data_expiracao - datetime.utcnow()).total_seconds()
-        recurso.tempo_restante_exp = max(0, int(tempo_restante_exp))
-        
-        if recurso.regiao_id not in recursos_por_regiao:
-            recursos_por_regiao[recurso.regiao_id] = {'regiao_nome': recurso.regiao.nome, 'recursos': []}
-        recursos_por_regiao[recurso.regiao_id]['recursos'].append(recurso)
+    # Processa os resultados para o template
+    recursos_para_coleta = []
+    for item in recursos_agrupados_query:
+        tempo_restante_exp = (item.proxima_expiracao - datetime.utcnow()).total_seconds()
+        recursos_para_coleta.append({
+            'regiao_id': item.regiao_id,
+            'regiao_nome': item.regiao_nome,
+            'tipo_recurso': item.tipo_recurso,
+            'quantidade_total': int(item.total_quantidade),
+            'tempo_restante_exp': max(0, int(tempo_restante_exp))
+        })
     
     # 2. Carregar Frota Disponível
     frota_completa = armazem.frota.all()
@@ -85,7 +99,7 @@ def view_warehouse():
                            tempo_total_restante=tempo_total_restante,
                            ultima_viagem=ultima_viagem,
                            recurso_em_transito=recurso_em_transito, 
-                           recursos_por_regiao=recursos_por_regiao,
+                           recursos_para_coleta=recursos_para_coleta,
                            veiculos_disponiveis=veiculos_disponiveis, **footer)
 
 @bp.route('/upgrade/<string:type>', methods=['POST'])

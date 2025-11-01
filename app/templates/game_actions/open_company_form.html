@@ -3,6 +3,7 @@
 
 {% block content %}
     <h1 class="mt-4">Abrir Nova Empresa Privada</h1>
+    <p class="lead">Negocie Ouro e Ferro diretamente com outros jogadores.</p>
     
     <div class="row">
         <div class="col-md-8">
@@ -13,7 +14,7 @@
                 
                 {{ wtf.form_field(form.nome) }}
                 
-                <div class="form-group">
+                <div class="mb-3">
                     {{ form.taxa_lucro.label(class="form-control-label") }}
                     {{ form.taxa_lucro(class="form-control", placeholder="0.15 para 15%") }}
                     {% for error in form.taxa_lucro.errors %}

@@ -11,6 +11,7 @@ footer = {'ano': Config.ANO_ATUAL, 'versao': Config.VERSAO_APP}
 
 HORA_POR_KM = 100 # A cada 100km gasta 1h (1h / 100km = 0.01h/km)
 CUSTO_POR_KM = 5.0 # R$5 por KM
+NIVEL_MINIMO_PARA_VIAGEM = 2 # Defina como constante no topo do arquivo
 
 @bp.route('/')
 @login_required
@@ -49,13 +50,14 @@ def view_map():
                 distancia_efetiva = round(distancia_bruta * fator_aceleracao, 2)
                 tempo_horas = ceil(distancia_efetiva / HORA_POR_KM)
                 custo_total = round(distancia_efetiva * CUSTO_POR_KM, 2)
+                pode_viajar = (jogador.dinheiro >= custo_total) and (jogador.nivel >= NIVEL_MINIMO_PARA_VIAGEM)
                 
                 opcao.update({
                     'distancia_bruta': distancia_bruta,
                     'distancia_efetiva': distancia_efetiva,
                     'tempo_horas': tempo_horas,
                     'custo_total': custo_total,
-                    'pode_viajar': jogador.dinheiro >= custo_total
+                    'pode_viajar': pode_viajar
                 })
             
             opcoes_viagem_calculadas.append(opcao)

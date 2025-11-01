@@ -1,7 +1,16 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <h1 class="mt-4">Mapa de Regiões</h1>
+    <h1 class="mt-4">Mapa de Minas Gerais</h1>
+    <p class="lead">Conheça as regiões disponíveis e viaje por onde desejar.</p>
+
+    {% set NIVEL_MINIMO = 2 %}
+    
+    {% if jogador.nivel < NIVEL_MINIMO and not viagem_ativa %}
+        <div class="alert alert-danger">
+            ⚠️ Você precisa alcançar o <strong>Nível {{ NIVEL_MINIMO }}</strong> para iniciar viagens entre regiões.
+        </div>
+    {% endif %}
     
     {# --- TELA DE STATUS DE VIAGEM (Se estiver em viagem) --- #}
     {% if viagem_ativa %}
@@ -68,9 +77,11 @@
                             <form method="POST" action="{{ url_for('game_actions.travel') }}">
                                 <input type="hidden" name="destino_id" value="{{ destino.id }}">
                                 <button type="submit" 
-                                        class="btn btn-sm {% if opcao.pode_viajar %}btn-success{% else %}btn-danger{% endif %}"
-                                        {% if not opcao.pode_viajar %}disabled{% endif %}>
-                                    {% if opcao.pode_viajar %}
+                                        class="btn btn-sm {% if opcao.pode_viajar %}btn-success{% elif jogador.nivel < NIVEL_MINIMO %}btn-outline-warning{% else %}btn-outline-danger{% endif %}"
+                                        {% if not opcao.pode_viajar or jogador.nivel < NIVEL_MINIMO %}disabled{% endif %}>
+                                    {% if jogador.nivel < NIVEL_MINIMO %}
+                                        Requer Nv. {{ NIVEL_MINIMO }}
+                                    {% elif opcao.pode_viajar %}
                                         Viajar Agora
                                     {% else %}
                                         Renda Insuficiente
@@ -79,7 +90,6 @@
                             </form>
 
                         {% elif viagem_ativa %}
-                            {# Se ESTIVER viajando: Exibe status 'Já em Viagem' #}
                             <button class="btn btn-sm btn-secondary" disabled>
                                 Já em Viagem...
                             </button>

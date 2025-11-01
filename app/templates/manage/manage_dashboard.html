@@ -2,6 +2,7 @@
 
 {% block content %}
     <h1 class="mt-4">Painel de Gestão</h1>
+    <p class="lead">Gerenciar dados e itens do jogo.</p>
 
     <ul class="nav nav-tabs" id="manageTabs" role="tablist">
         <li class="nav-item">
@@ -42,10 +43,12 @@
                         <td>{{ jogador.experiencia_trabalho | currency_format('', separator='.')  }}</td>
                         <td>{{ 'Sim' if jogador.is_admin else 'Não' }}</td>
                         <td>
-                            <a href="{{ url_for('manage.edit_player', player_id=jogador.id) }}" class="btn btn-sm btn-info mr-1">Editar</a>
-                            <form method="POST" action="{{ url_for('manage.delete_data', model_name='jogador', id=jogador.id) }}" class="d-inline" onsubmit="return confirm('Tem certeza que deseja EXCLUIR o jogador {{ jogador.username }}?');">
-                                <button type="submit" class="btn btn-sm btn-danger">Excluir</button>
-                            </form>
+                            <div class="btn-group">
+                                <a href="{{ url_for('manage.edit_player', player_id=jogador.id) }}" class="btn btn-sm btn-outline-info me-1">Editar</a>
+                                <form method="POST" action="{{ url_for('manage.delete_data', model_name='jogador', id=jogador.id) }}" class="d-inline" onsubmit="return confirm('Tem certeza que deseja EXCLUIR o jogador {{ jogador.username }}?');">
+                                    <button type="submit" class="btn btn-sm btn-danger">Excluir</button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
@@ -75,7 +78,7 @@
                         <td>{{ (regiao.taxa_imposto_geral * 100)|round(0) }}%</td>
                         <td>{{ "%.0f"|format(regiao.reserva_ouro) }}</td>
                         <td>
-                            <a href="{{ url_for('manage.edit_region', region_id=regiao.id) }}" class="btn btn-sm btn-info mr-1">Editar</a>
+                            <a href="{{ url_for('manage.edit_region', region_id=regiao.id) }}" class="btn btn-sm btn-info me-1">Editar</a>
                             <form method="POST" action="{{ url_for('manage.delete_data', model_name='regiao', id=regiao.id) }}" class="d-inline" onsubmit="return confirm('Tem certeza que deseja EXCLUIR a localização {{ regiao.nome }}?');">
                                 <button type="submit" class="btn btn-sm btn-danger">Excluir</button>
                             </form>
@@ -117,7 +120,7 @@
                         <td>{% if empresa.proprietario %}{{ empresa.proprietario.username }}{% else %}Governo{% endif %}</td>
                         <td>{{ (empresa.taxa_lucro * 100)|round(1) }}%</td>
                         <td>
-                            <a href="{{ url_for('manage.edit_company', company_id=empresa.id) }}" class="btn btn-sm btn-info mr-1">Editar</a>
+                            <a href="{{ url_for('manage.edit_company', company_id=empresa.id) }}" class="btn btn-sm btn-info me-1">Editar</a>
                             <form method="POST" action="{{ url_for('manage.delete_data', model_name='empresa', id=empresa.id) }}" class="d-inline" onsubmit="return confirm('Tem certeza que deseja EXCLUIR a empresa {{ empresa.nome }}?');">
                                 <button type="submit" class="btn btn-sm btn-danger">Excluir</button>
                             </form>

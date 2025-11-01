@@ -36,7 +36,8 @@ def create_app(config_class=Config):
     migrate.init_app(app, db)
     bootstrap.init_app(app)
 
-    from app.background_tasks import run_core_status_updates, replenish_resources, check_vehicle_validity
+    from app.background_tasks import (run_core_status_updates, replenish_resources, 
+                                  check_vehicle_validity, cleanup_expired_market_orders)
 
     scheduler.init_app(app)
     scheduler.start()
@@ -65,6 +66,14 @@ def create_app(config_class=Config):
                           trigger='interval', 
                           hours=1, # 1 hora para testes
                           name='Checagem de Validade de Veículos')
+    
+    if not scheduler.get_job('market_order_cleanup'):
+        scheduler.add_job(id='market_order_cleanup', 
+                        func=cleanup_expired_market_orders, 
+                        args=[app],
+                        trigger='interval', 
+                        minutes=15, # Roda a cada 15 minutos
+                        name='Limpeza de Ordens de Mercado Expiradas')
         
     ACAO_MAP = {
         'MINERACAO': 'Mineração',
@@ -80,6 +89,11 @@ def create_app(config_class=Config):
         'TRANSPORTE_INICIO': 'Logística Agendada',
         'TRANSPORTE_CONCLUIDO': 'Transporte Concluído',
     }
+
+    @app.context_processor
+    def inject_utcnow():
+        """Injeta a variável 'utcnow' globalmente nos templates."""
+        return {'utcnow': datetime.utcnow()}
 
     @app.template_filter('action_format')
     def action_format_filter(action_code):

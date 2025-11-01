@@ -20,7 +20,12 @@ def travel():
     regiao_atual = jogador.regiao_atual
     
     destino_id = request.form.get('destino_id', type=int)
-    destino = Regiao.query.get(destino_id)
+    destino = Regiao.query.get(destino_id),
+    NIVEL_MINIMO_PARA_VIAGEM = 2
+
+    if jogador.nivel < NIVEL_MINIMO_PARA_VIAGEM:
+        flash(f"Você precisa do Nível {NIVEL_MINIMO_PARA_VIAGEM} para viajar entre regiões.", 'danger')
+        return redirect(url_for('map.view_map'))
 
     if not destino or destino.id == regiao_atual.id:
         flash(format_currency_python("Destino inválido.", 'danger'))
@@ -392,26 +397,46 @@ def start_transport():
     jogador = Jogador.query.get(current_user.id)
     armazem = jogador.armazem 
     
-    # 1. Obter dados do POST e Objetos Críticos
-    recurso_mina_id = request.form.get('recurso_mina_id', type=int)
-    recurso_mina = RecursoNaMina.query.get(recurso_mina_id)
+    # 1. Obter dados do POST (Região + Tipo)
+    regiao_id = request.form.get('regiao_id', type=int)
+    tipo_recurso = request.form.get('tipo_recurso', type=str)
     
-    if not recurso_mina or recurso_mina.jogador_id != jogador.id or not armazem:
-        flash("Erro: O recurso a ser transportado não foi encontrado ou expirou.", 'danger')
+    # 2. Buscar TODOS os recursos pendentes nesse grupo
+    recursos_para_transportar = RecursoNaMina.query.filter_by(
+        jogador_id=jogador.id,
+        regiao_id=regiao_id,
+        tipo_recurso=tipo_recurso
+    ).all()
+
+    if not recursos_para_transportar or not armazem:
+        flash("Recursos para transporte não encontrados ou expiraram.", 'danger')
         return redirect(url_for('warehouse.view_warehouse'))
-    
-    quantidade_total_pendente = recurso_mina.quantidade
+
+    # 3. Calcular a quantidade total
+    quantidade_total_pendente = sum(r.quantidade for r in recursos_para_transportar)
     
     if quantidade_total_pendente <= 0:
-        db.session.delete(recurso_mina); db.session.commit()
-        flash("Recurso na mina zerado e removido.", 'info')
+        for r in recursos_para_transportar: db.session.delete(r)
+        db.session.commit()
+        flash("Recursos na mina zerados e removidos.", 'info')
         return redirect(url_for('warehouse.view_warehouse'))
+    
+    # Salva a região de origem (do primeiro item, já que são agrupados)
+    regiao_origem = recursos_para_transportar[0].regiao
     
     try:
         # 2. CÁLCULO DE TEMPO BASE E DISTÂNCIA
-        regiao_origem = recurso_mina.regiao; regiao_destino = armazem.regiao 
-        distancia_km = calculate_distance_km(regiao_origem.latitude, regiao_origem.longitude, 
-                                             regiao_destino.latitude, regiao_destino.longitude)
+        regiao_origem = db.session.get(Regiao, regiao_id) 
+        regiao_destino = armazem.regiao 
+        
+        if not regiao_origem:
+             flash("Região de origem não encontrada.", 'danger')
+             return redirect(url_for('warehouse.view_warehouse'))
+
+        distancia_km = calculate_distance_km(regiao_origem.latitude,
+                                             regiao_origem.longitude, 
+                                             regiao_destino.latitude,
+                                             regiao_destino.longitude)
 
         tempo_minutos_base = current_app.config['TEMPO_TRANSPORTE_LOCAL_MIN']
         if distancia_km >= 1.0:
@@ -474,7 +499,7 @@ def start_transport():
                         # CRIAÇÃO DO JOB
                         transporte = TransporteAtivo(
                             jogador_id=jogador.id, veiculo_id=veiculo.id, regiao_origem_id=regiao_origem.id,
-                            regiao_destino_id=regiao_destino.id, tipo_recurso=recurso_mina.tipo_recurso,
+                            regiao_destino_id=regiao_destino.id, tipo_recurso=tipo_recurso,
                             quantidade=quantidade_a_enviar, data_fim=data_fim_viagem
                         )
                         transporte_jobs.append(transporte)
@@ -503,16 +528,28 @@ def start_transport():
         # 6. VALIDAÇÃO FINAL E LIMPEZA
         
         if recurso_coberto < quantidade_total_pendente:
-            recurso_restante = max(0.0, quantidade_total_pendente - recurso_coberto)
-            recurso_mina.quantidade = recurso_restante
-
-            TEMPO_EXPIRACAO_RECURSO_REMANESCENTE_HORAS = 6 
-            recurso_mina.data_expiracao = datetime.utcnow() + timedelta(hours=TEMPO_EXPIRACAO_RECURSO_REMANESCENTE_HORAS)
-
-            flash(f"AVISO: {recurso_restante:.0f} toneladas permanecerão na mina e expirarão em 6 horas.", 'warning')
-            db.session.add(recurso_mina) 
+             recurso_restante = max(0.0, quantidade_total_pendente - recurso_coberto)
+             
+             # Deleta todos os antigos e cria um NOVO registro com o restante
+             for r in recursos_para_transportar:
+                 db.session.delete(r)
+             
+             expiracao_min = current_app.config['RECURSO_NA_MINA_EXPIRACAO_MIN']
+             
+             novo_remanescente = RecursoNaMina(
+                 jogador_id=jogador.id,
+                 regiao_id=regiao_id,
+                 tipo_recurso=tipo_recurso,
+                 quantidade=recurso_restante,
+                 data_expiracao = datetime.utcnow() + timedelta(minutes=expiracao_min)
+             )
+             db.session.add(novo_remanescente)
+             
+             flash(f"AVISO: {recurso_restante:.0f}t permanecerão na mina. Frete cobrado.", 'warning')
         else:
-             db.session.delete(recurso_mina) 
+             # Deleta todos os recursos do grupo, pois foram 100% transportados
+             for r in recursos_para_transportar:
+                 db.session.delete(r)
         
         descricao_acao = (
             f"Frete agendado para {total_viagens_agendadas} viagens. Custo: {format_currency_python(custo_frete_total)}."
