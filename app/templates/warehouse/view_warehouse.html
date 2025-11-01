@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import 'bootstrap/wtf.html' as wtf %}
 
 {% block content %}
     
@@ -17,20 +18,19 @@
             <p>A última viagem da sua frota ({{ ultima_viagem.veiculo.nome }}) tem conclusão prevista em <strong id="logistics-countdown" data-seconds="{{ tempo_total_restante }}">Calculando...</strong></p>
         </div>
     {% else %}
-        <div class="alert alert-success"><i class="fas fa-check-circle me-1"></i> Sua frota está livre e seus recursos estão armazenados.</div>
     {% endif %}
 
     {# --- STATUS E INFORMAÇÕES GERAIS DO ARMAZÉM --- #}
     <div class="card mb-4 bg-light p-3">
-        <div class="row">
+        <div class="row small">
             <div class="col-md-4">
-                <strong><i class="fas fa-map-marker-alt me-1"></i> Localização:</strong> {{ armazem.proprietario.regiao_residencia.nome }}
+                <strong><i class="fas fa-map-marker-alt me-1"></i> Localização:</strong><br>{{ armazem.proprietario.regiao_residencia.nome }}
             </div>
             <div class="col-md-4">
-                <strong><i class="fas fa-weight-hanging me-1"></i> Capacidade Total:</strong> {{ peso_atual | currency_format('', separator='.') }} / {{ armazem.get_capacidade_max() | currency_format('', separator='.') }} Toneladas
+                <strong><i class="fas fa-weight-hanging me-1"></i> Capacidade Total:</strong><br>{{ peso_atual | currency_format('', separator='.') }} / {{ armazem.get_capacidade_max() | currency_format('', separator='.') }} Toneladas
             </div>
             <div class="col-md-4">
-                <strong><i class="fas fa-truck me-1"></i> Vagas na Frota:</strong> {{ frota|length }} / {{ armazem.get_max_frota() | currency_format('', separator='.') }} Vagas
+                <strong><i class="fas fa-truck me-1"></i> Vagas na Frota:</strong><br>{{ frota|length }} / {{ armazem.get_max_frota() | currency_format('', separator='.') }} Vagas
             </div>
         </div>
         <hr class="my-2">
@@ -68,6 +68,7 @@
             {% set pode_pagar = jogador.dinheiro >= info.money and jogador.gold >= info.gold %}
             {% set is_training_this = treino_ativo and treino_ativo.habilidade == 'armazem_' + type %}
             {% set is_training_armazem = treino_ativo and treino_ativo.habilidade.startswith('armazem_') %}
+            {% set tempo_restante_armazem = tempo_restante_armazem | default(0) %}
 
             <div class="col-md-4 mb-4">
                 <div class="card h-100">
@@ -136,8 +137,19 @@
                                 <li><i class="fas fa-money-bill-alt me-1"></i> Frete: R$ {{ veiculo.custo_tonelada_km | int }}/t-km | <i class="fas fa-calendar-alt me-1"></i> Duração: {{ veiculo.validade_dias }} dias</li>
                                 
                                 {% if viagens_pendentes > 0 %}
+                                
+                                {% set first_trip = veiculo.transporte_atual[0] if veiculo.transporte_atual and veiculo.transporte_atual | length > 0 else none %}
+                                
                                 <li class="text-danger"><i class="fas fa-exclamation-circle me-1"></i> Status: Trabalhando... ({{ viagens_pendentes }} viagens pendentes)</li>
                                 <li class="text-danger"><i class="fas fa-exchange-alt me-1"></i> Em Trânsito: {{ recurso_em_transito_veiculo | int }} Toneladas</li>
+                                
+                                {# --- NOVO: PRÓXIMA CONCLUSÃO DE VIAGEM --- #}
+                                {% if first_trip %}
+                                    {% set remaining_sec = (first_trip.data_fim - utcnow).total_seconds() | int %}
+                                    <li class="small text-muted"><i class="fas fa-clock me-1"></i> Próx. Conclusão: <span data-seconds="{{ remaining_sec }}">...</span></li>
+                                {% endif %}
+                                
+
                                 {% else %}
                                 <li class="text-success"><i class="fas fa-check-circle me-1"></i> Status: Disponível</li>
                                 {% endif %}
@@ -242,6 +254,7 @@
             {% else %}
             <div class="alert alert-info mt-4">Não há recursos esperando por frete.</div>
             {% endif %}
+
         </div>
     </div>
     

@@ -10,43 +10,6 @@
         
         <h3 class="mt-4"><i class="fas fa-chart-bar me-2"></i>Estatísticas Principais</h3>
         <div class="card mb-4">
-            <div class="card-body">
-                
-                {# Informações principais (Dinheiro, Gold, Energia) movidas para o topo da página no base.html #}
-                
-                <p class="mb-1"><strong>Nível Atual:</strong> {{ jogador.nivel }}</p>
-                
-                {% set xp_needed = jogador.get_xp_needed_for_next_level() %}
-                {% set xp_progress = jogador.experiencia / xp_needed * 100 %}
-
-                <p class="mb-1">
-                    <strong>Experiência Geral:</strong> 
-                    {{ jogador.experiencia | currency_format('', separator='.') }} / 
-                    {{ xp_needed | currency_format('', separator='.') }}
-                    <small>(XP total para o Nv. {{ jogador.nivel + 1 }})</small>
-                </p>
-                
-                {# BARRA DE PROGRESSO DE NÍVEL MAIS VISÍVEL #}
-                <div class="progress mb-3" style="height: 20px;">
-                    <div class="progress-bar bg-info" role="progressbar" style="width: {{ xp_progress }}%;" aria-valuenow="{{ jogador.experiencia }}" aria-valuemin="0" aria-valuemax="{{ xp_needed }}">
-                        <strong class="small text-dark">{{ "%.0f"|format(xp_progress) }}%</strong>
-                    </div>
-                </div>
-
-                <p class="mb-1">
-                    <strong><i class="fas fa-briefcase me-1"></i> Experiência de Trabalho:</strong> {{ "%.0f"|format(jogador.experiencia_trabalho) }} XP
-                </p>
-                
-            </div>
-        </div>
-        
-    </div>
-
-    {# --- COLUNA DIREITA: LOCALIZAÇÃO E RANKING --- #}
-    <div class="col-md-6">
-        <h3 class="mt-4"><i class="fas fa-globe-americas me-2"></i>Localização Atual</h3>
-        
-        <div class="card mb-4">
             <div class="card-body small">
                 
                 {# --- STATUS DE RESIDÊNCIA/VIAGEM --- #}
@@ -82,7 +45,6 @@
                         Sua residência oficial.
                     </div>
                 {% endif %}
-                
                 <hr class="my-2">
                 <div class="row text-center">
                     <div class="col-md-6">
@@ -101,6 +63,40 @@
                 
             </div>
         </div>
+        <div class="card mb-4">
+            <div class="card-body">
+                
+                {# Informações principais (Dinheiro, Gold, Energia) movidas para o topo da página no base.html #}
+                
+                <p class="mb-1"><strong>Nível Atual:</strong> {{ jogador.nivel }}</p>
+                
+                {% set xp_needed = jogador.get_xp_needed_for_next_level() %}
+                {% set xp_progress = jogador.experiencia / xp_needed * 100 %}
+
+                <p class="mb-1">
+                    <strong>Experiência Geral:</strong> 
+                    {{ jogador.experiencia | currency_format('', separator='.') }} / 
+                    {{ xp_needed | currency_format('', separator='.') }}
+                    <small>(XP total para o Nv. {{ jogador.nivel + 1 }})</small>
+                </p>
+                
+                {# BARRA DE PROGRESSO DE NÍVEL MAIS VISÍVEL #}
+                <div class="progress mb-3" style="height: 20px;">
+                    <div class="progress-bar bg-info" role="progressbar" style="width: {{ xp_progress }}%;" aria-valuenow="{{ jogador.experiencia }}" aria-valuemin="0" aria-valuemax="{{ xp_needed }}">
+                        <strong class="small text-dark">{{ "%.0f"|format(xp_progress) }}%</strong>
+                    </div>
+                </div>
+
+                <p class="mb-1">
+                    <strong><i class="fas fa-briefcase me-1"></i> Experiência de Trabalho:</strong> {{ "%.0f"|format(jogador.experiencia_trabalho) }} XP
+                </p>
+                
+            </div>
+        </div>
+    </div>
+
+    {# --- COLUNA DIREITA: LOCALIZAÇÃO E RANKING --- #}
+    <div class="col-md-6">        
 
         {# RANKING GLOBAL #}
         <h3 class="mt-4"><i class="fas fa-trophy me-2"></i>Ranking Global</h3>

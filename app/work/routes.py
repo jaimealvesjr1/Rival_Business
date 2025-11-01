@@ -2,7 +2,7 @@ from flask import render_template, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
 from app.work import bp
 from app.models import ViagemAtiva, CampoAgricola
-from app.game_actions.forms import OpenCompanyForm, OpenCampoForm
+from app.game_actions.forms import OpenCompanyForm, OpenCampoForm 
 from config import Config
 from datetime import datetime
 
@@ -38,9 +38,11 @@ def work_dashboard():
     campos_na_regiao = CampoAgricola.query.filter_by(regiao_id=regiao.id).all()
     farm_slots_max = current_app.config['FARMING_FIELD_MAX_SLOTS']
     farm_max_uses = current_app.config['FARMING_FIELD_MAX_USES']
-
+    
+    # --- NOVO: Instanciar Formulários e obter variáveis de config ---
     form_empresa = OpenCompanyForm()
     form_campo = OpenCampoForm()
+    GROW_TIME_MINUTES = current_app.config['FARMING_GROW_TIME_MINUTES'] # <-- Novo
 
     return render_template('work/work_dashboard.html',
                            title=f'Trabalho em {regiao.nome}',
@@ -55,6 +57,7 @@ def work_dashboard():
                            FARMING_FIELD_MAX_USES=current_app.config['FARMING_FIELD_MAX_USES'],
                            farm_slots_max=farm_slots_max,
                            farm_max_uses=farm_max_uses,
-                           form_empresa=form_empresa,
+                           form_empresa=form_empresa, 
                            form_campo=form_campo,
+                           GROW_TIME_MINUTES=GROW_TIME_MINUTES,
                            **footer)
