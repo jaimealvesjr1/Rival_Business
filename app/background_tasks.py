@@ -5,6 +5,7 @@ from app.models import (Jogador, TreinamentoAtivo, Regiao, RecursoNaMina,
                         CampoAgricola, PlantioAtivo)
 from datetime import datetime, timedelta
 from sqlalchemy.orm import joinedload
+from math import ceil
 
 MAX_ENERGIA = 200
 ENERGIA_POR_MINUTO = 1
@@ -238,11 +239,18 @@ def regenerate_player_status(app):
                     data_expiracao = datetime.utcnow() + timedelta(minutes=expiracao_min)
                 )
                 db.session.add(recurso_dono)
-
-            db.session.add(HistoricoAcao(jogador_id=jogador_plantou.id, tipo_acao='COLHEITA', descricao=f"Colheu {lucro_jogador:.0f}t de Milho em {campo.nome}."))
-            if lucro_dono > 0:
                 db.session.add(HistoricoAcao(jogador_id=dono_campo.id, tipo_acao='TAXA_COLHEITA', descricao=f"Recebeu {lucro_dono:.0f}t de Milho (taxa) de {campo.nome}."))
 
+
+            db.session.add(HistoricoAcao(jogador_id=jogador_plantou.id, tipo_acao='COLHEITA', descricao=f"Colheu {lucro_jogador:.0f}t de Milho em {campo.nome}."))
+            
+            # --- NOVO: Lógica de Descanso PÓS-COLHEITA ---
+            # Se o campo atingiu 0 usos, inicia o período de descanso AGORA.
+            if campo.usos_restantes <= 0:
+                tempo_descanso_h = current_app.config['FARMING_FIELD_REST_HOURS']
+                campo.data_descanso_fim = datetime.utcnow() + timedelta(hours=tempo_descanso_h)
+                db.session.add(campo) # Adiciona o campo de volta para salvar a data de descanso
+            
             # 5. Deletar o plantio
             db.session.delete(plantio)
 

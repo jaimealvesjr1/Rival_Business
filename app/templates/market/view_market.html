@@ -2,73 +2,78 @@
 {% import "bootstrap/wtf.html" as wtf %}
 
 {% block content %}
-    <h1 class="mt-4">Mercado Global</h1>
-    <p class="lead">Negocie Ouro e Ferro diretamente com outros jogadores.</p>
+    <h1 class="mt-4"><i class="fas fa-store me-2"></i>Mercado Global</h1>
+    <p class="lead">Negocie recursos diretamente com outros jogadores.</p>
 
     <div class="alert alert-info small">
-        <strong>Disponível para Negociar:</strong>
+        <strong><i class="fas fa-money-bill-wave me-1"></i> Disponível para Negociar:</strong>
         Dinheiro: <strong>{{ dinheiro_disponivel | currency_format('R$') }}</strong> |
-        Gold: <strong>{{ recursos_armazem['gold'] | default(0.0) | int }} Kg</strong> |
-        Ferro: <strong>{{ recursos_armazem['ferro'] | default(0.0) | int }} ton</strong>
+        <i class="fas fa-dice-d20 me-1 text-warning"></i> Gold: <strong>{{ recursos_armazem['gold'] | default(0.0) | int }} Kg</strong> |
+        <i class="fas fa-hammer me-1 texto-ferro"></i> Ferro: <strong>{{ recursos_armazem['ferro'] | default(0.0) | int }} ton</strong>
         <br>
-        <small>(Recursos e dinheiro em ordens ativas ficam bloqueados e não aparecem aqui).</small>
+        <small class="d-block mt-1">Recursos e dinheiro em ordens ativas ficam bloqueados e não aparecem aqui.</small>
     </div>
 
     <details class="mb-4">
-        <summary class="btn btn-primary">Criar Nova Ordem de Mercado</summary>
+        <summary class="btn btn-primary"><i class="fas fa-plus-circle me-1"></i> Criar Nova Ordem de Mercado</summary>
         <div class="card card-body mt-2">
             <form method="POST" action="{{ url_for('market.view_market') }}">
                 {{ form.hidden_tag() }}
                 <div class="row">
-                    <div class="col-md-4">{{ wtf.form_field(form.resource_type) }}</div>
-                    <div class="col-md-4">{{ wtf.form_field(form.quantity) }}</div>
-                    <div class="col-md-4">{{ wtf.form_field(form.price_per_unit) }}</div>
+                    <div class="col-md-4 text-dark">{{ wtf.form_field(form.resource_type) }}</div>
+                    <div class="col-md-4 text-dark">{{ wtf.form_field(form.quantity) }}</div>
+                    <div class="col-md-4 text-dark">{{ wtf.form_field(form.price_per_unit) }}</div>
                 </div>
-                <div class="mt-3">
+                <div class="mt-3 text-center">
                     {{ form.submit_sell(class="btn btn-success me-2") }}
-                    {{ form.submit_buy(class="btn btn-warning") }}
+                    {{ form.submit_buy(class="btn btn-warning text-white") }}
                 </div>
             </form>
         </div>
     </details>
     
+    {# --- GUIAS DO MERCADO --- #}
     <ul class="nav nav-tabs" id="marketTabs" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link active" id="buy-tab" data-bs-toggle="tab" data-bs-target="#buy-panel" type="button" role="tab">
-                Ordens de Venda (Comprar)
+                <i class="fas fa-handshake me-1"></i> Ordens de Venda (Comprar)
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="sell-tab" data-bs-toggle="tab" data-bs-target="#sell-panel" type="button" role="tab">
-                Ordens de Compra (Vender)
+                <i class="fas fa-money-check-alt me-1"></i> Ordens de Compra (Vender)
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="my-orders-tab" data-bs-toggle="tab" data-bs-target="#my-orders-panel" type="button" role="tab">
-                Minhas Ordens
+                <i class="fas fa-list me-1"></i> Minhas Ordens
             </button>
         </li>
     </ul>
 
     <div class="tab-content" id="marketTabsContent">
         
+        {# --- ABA 1: ORDENS DE VENDA (Para o jogador COMPRAR) --- #}
         <div class="tab-pane fade show active" id="buy-panel" role="tabpanel">
             <ul class="list-group mt-3">
                 {% for order in sell_orders %}
+                {% set resource_icon = 'fas fa-dice-d20 text-warning' if order.resource_type == 'gold' else 'fas fa-hammer texto-ferro' %}
                 <li class="list-group-item">
                     <form method="POST" action="{{ url_for('market.fill_order', order_id=order.id) }}">
                         <div class="row align-items-center">
                             <div class="col-lg-3 col-md-4 col-12">
-                                <strong class="text-success">VENDEDOR:</strong> {{ order.jogador.username }}<br>
-                                <small class="text-muted">{{ order.resource_type | capitalize }}</small>
+                                <strong class="text-success"><i class="fas fa-user-tag me-1"></i> VENDEDOR:</strong> {{ order.jogador.username }}<br>
+                                <small><i class="{{ resource_icon }} me-1"></i> {{ order.resource_type | capitalize }}</small>
                             </div>
                             <div class="col-lg-3 col-md-4 col-6">
-                                <strong>Preço:</strong> {{ order.price_per_unit | currency_format('R$') }}<br>
+                                <strong><i class="fas fa-tag me-1"></i> Preço/Unidade:</strong> {{ order.price_per_unit | currency_format('R$') }}<br>
                                 <small class="text-muted">Disponível: {{ order.quantity_remaining | int }}</small>
                             </div>
-                            <div class="col-lg-6 col-md-4 col-6 d-flex justify-content-end">
+                            <div class="col-lg-6 col-md-4 col-6 d-flex justify-content-end align-items-center">
                                 <input type="number" name="quantity" min="1" max="{{ order.quantity_remaining | int }}" value="1" class="form-control form-control-sm" style="width: 80px;" required>
-                                <button type="submit" class="btn btn-success btn-sm ms-2">Comprar</button>
+                                <button type="submit" class="btn btn-success btn-sm ms-2">
+                                    <i class="fas fa-cart-plus me-1"></i> Comprar
+                                </button>
                             </div>
                         </div>
                     </form>
@@ -79,23 +84,27 @@
             </ul>
         </div>
         
+        {# --- ABA 2: ORDENS DE COMPRA (Para o jogador VENDER) --- #}
         <div class="tab-pane fade" id="sell-panel" role="tabpanel">
             <ul class="list-group mt-3">
                 {% for order in buy_orders %}
+                {% set resource_icon = 'fas fa-dice-d20 text-warning' if order.resource_type == 'gold' else 'fas fa-hammer texto-ferro' %}
                 <li class="list-group-item">
                     <form method="POST" action="{{ url_for('market.fill_order', order_id=order.id) }}">
                         <div class="row align-items-center">
                             <div class="col-lg-3 col-md-4 col-12">
-                                <strong class="text-warning">COMPRADOR:</strong> {{ order.jogador.username }}<br>
-                                <small class="text-muted">{{ order.resource_type | capitalize }}</small>
+                                <strong class="text-warning"><i class="fas fa-search-dollar me-1"></i> COMPRADOR:</strong> {{ order.jogador.username }}<br>
+                                <small><i class="{{ resource_icon }} me-1"></i> {{ order.resource_type | capitalize }}</small>
                             </div>
                             <div class="col-lg-3 col-md-4 col-6">
-                                <strong>Preço:</strong> {{ order.price_per_unit | currency_format('R$') }}<br>
+                                <strong><i class="fas fa-tag me-1"></i> Preço/Unidade:</strong> {{ order.price_per_unit | currency_format('R$') }}<br>
                                 <small class="text-muted">Procurando: {{ order.quantity_remaining | int }}</small>
                             </div>
-                            <div class="col-lg-6 col-md-4 col-6 d-flex justify-content-end">
+                            <div class="col-lg-6 col-md-4 col-6 d-flex justify-content-end align-items-center">
                                 <input type="number" name="quantity" min="1" max="{{ order.quantity_remaining | int }}" value="1" class="form-control form-control-sm" style="width: 80px;" required>
-                                <button type="submit" class="btn btn-warning btn-sm ms-2">Vender</button>
+                                <button type="submit" class="btn btn-warning btn-sm ms-2">
+                                    <i class="fas fa-hand-holding-usd me-1"></i> Vender
+                                </button>
                             </div>
                         </div>
                     </form>
@@ -106,6 +115,7 @@
             </ul>
         </div>
 
+        {# --- ABA 3: MINHAS ORDENS ATIVAS --- #}
         <div class="tab-pane fade" id="my-orders-panel" role="tabpanel">
             <ul class="list-group mt-3">
                 {% for order in my_active_orders %}
@@ -113,12 +123,14 @@
                     <div class="row align-items-center">
                         <div class="col-md-3 col-12">
                             {% if order.order_type == 'SELL' %}
-                            <strong class="text-success">VENDENDO</strong>
+                            <strong class="text-success"><i class="fas fa-arrow-up me-1"></i> VENDENDO</strong>
+                            {% set resource_icon = 'fas fa-dice-d20 text-warning' if order.resource_type == 'gold' else 'fas fa-hammer texto-ferro' %}
                             {% else %}
-                            <strong class="text-warning">COMPRANDO</strong>
+                            <strong class="text-warning"><i class="fas fa-arrow-down me-1"></i> COMPRANDO</strong>
+                            {% set resource_icon = 'fas fa-dice-d20 text-warning' if order.resource_type == 'gold' else 'fas fa-hammer texto-ferro' %}
                             {% endif %}
                             <br>
-                            <small class="text-muted">{{ order.resource_type | capitalize }}</small>
+                            <small><i class="{{ resource_icon }} me-1"></i> {{ order.resource_type | capitalize }}</small>
                         </div>
                         <div class="col-md-4 col-6">
                             <strong>Preço:</strong> {{ order.price_per_unit | currency_format('R$') }}<br>
@@ -126,11 +138,13 @@
                         </div>
                         <div class="col-md-3 col-6">
                             <strong>Expira em:</strong><br>
-                            <small><span data-seconds="{{ (order.data_expiracao - utcnow).total_seconds() | int }}">...</span></small>
+                            <small><i class="fas fa-clock me-1"></i> <span data-seconds="{{ (order.data_expiracao - utcnow).total_seconds() | int }}">...</span></small>
                         </div>
                         <div class="col-md-2 col-12 mt-2 mt-md-0 d-flex justify-content-end">
                             <form method="POST" action="{{ url_for('market.cancel_order', order_id=order.id) }}">
-                                <button type="submit" class="btn btn-danger btn-sm">Cancelar</button>
+                                <button type="submit" class="btn btn-danger btn-sm">
+                                    <i class="fas fa-times me-1"></i> Cancelar
+                                </button>
                             </form>
                         </div>
                     </div>

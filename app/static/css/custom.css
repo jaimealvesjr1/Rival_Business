@@ -1,8 +1,22 @@
 body {
-  background: linear-gradient(to bottom right, #f8f9fa, #e2e6ea);
-  color: var(--cor-texto);
+  background: #1c1c1e; /* Um cinza muito escuro */
+  color: #f8f9fa; /* Texto claro */
   min-height: 100vh;
-  padding-top: 5rem;
+}
+
+body > .container {
+    padding-top: 60px; /* Ajuste para o conteúdo não ficar por baixo da navbar fixa */
+}
+
+.navbar {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4);
+}
+
+h1, h2, h3, h4 {
+    color: #ffffff;
+    padding-bottom: 5px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.37);
+    margin-bottom: 1.5rem !important;
 }
 
 main {
@@ -21,10 +35,26 @@ footer {
 }
 
 .texto-ferro {
-  color: #922d2d;
+  color: #e07070 !important;
 }
 
 .bg-ferro {
   background-color: #922d2d !important;
+}
+
+.text-rivalbusiness {
+    color: #d48a00 !important;
+}
+
+.btn-rivalbusiness {
+    color: #fff; /* Texto branco */
+    background-color: #d48a00;
+    border-color: #d48a00;
+}
+
+.btn-rivalbusiness:hover {
+    background-color: #a36c00; /* Laranja um pouco mais escuro no hover */
+    border-color: #a36c00;
+    color: #fff;
 }
 

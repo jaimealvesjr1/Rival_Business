@@ -14,10 +14,31 @@
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
     <div class="container-fluid">
         <a class="navbar-brand" href="{{ url_for('index') }}">Rival Business</a>
+        {% if current_user.is_authenticated and current_user.nivel %}
+            <div class="d-none d-sm-flex align-items-center ms-2 me-auto">
+                <span class="small me-3" title="Jogador">
+                    <i class="fas fa-user me-1"></i>
+                    {{ current_user.username }}
+                </span>
+                <span class="text-success small me-3" title="Dinheiro">
+                    <i class="fas fa-coins me-1"></i>
+                    R$ {{ current_user.dinheiro | currency_format('', separator='.') }}
+                </span>
+                <span class="text-warning small me-3" title="Gold">
+                    <i class="fas fa-dice-d20 me-1"></i>
+                    G {{ "%.1f"|format(current_user.gold) }} Kg
+                </span>
+                <span class="text-info small" title="Energia">
+                    <i class="fas fa-bolt me-1"></i>
+                    {{ current_user.energia | int }} E
+                </span>
+            </div>
+        {% endif %}
         
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
+        
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav ms-auto p-3 p-lg-0">
                 
@@ -38,6 +59,7 @@
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('map.view_map') }}"><i class="fas fa-map-marked-alt me-2"></i>Mapa</a>
                 </li>
+                
                 {% if current_user.is_admin %}
                 <li class="nav-item">
                     <a class="nav-link text-warning" href="{{ url_for('manage.manage_dashboard') }}"><i class="fas fa-cogs me-2"></i>Gestão</a>

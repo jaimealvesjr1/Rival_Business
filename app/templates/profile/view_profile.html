@@ -1,101 +1,111 @@
 {% extends "base.html" %}
 {% block content %}
-<h1 class="mt-4">Perfil de {{ jogador.username }}</h1>
-    <p class="lead">Visualize as informações sobre seu personagem.</p>
+<h1 class="mt-4"><i class="fas fa-user-circle me-2"></i>Perfil de {{ jogador.username }}</h1>
+<p class="lead">Visualize as informações sobre seu personagem.</p>
 
 <div class="row">
+    
+    {# --- COLUNA ESQUERDA: ESTATÍSTICAS E PROGRESSO --- #}
     <div class="col-md-6">
-        <h3>Estatísticas Principais</h3>
-        <ul class="list-group mb-4">
-            <li class="list-group-item">
-                <strong>Residência:</strong> 
-                {% if jogador.regiao_residencia %}{{ jogador.regiao_residencia.nome }}{% else %}N/A{% endif %}
-            </li>
-            <li class="list-group-item"><strong>Nível Geral:</strong> {{ jogador.nivel }}</li>
-            <li class="list-group-item">
-                <strong>Experiência Geral:</strong> 
+        
+        <h3 class="mt-4"><i class="fas fa-chart-bar me-2"></i>Estatísticas Principais</h3>
+        <div class="card mb-4">
+            <div class="card-body">
+                
+                {# Informações principais (Dinheiro, Gold, Energia) movidas para o topo da página no base.html #}
+                
+                <p class="mb-1"><strong>Nível Atual:</strong> {{ jogador.nivel }}</p>
+                
+                {% set xp_needed = jogador.get_xp_needed_for_next_level() %}
+                {% set xp_progress = jogador.experiencia / xp_needed * 100 %}
+
+                <p class="mb-1">
+                    <strong>Experiência Geral:</strong> 
                     {{ jogador.experiencia | currency_format('', separator='.') }} / 
-                    {{ jogador.get_xp_needed_for_next_level() | currency_format('', separator='.') }}                
-                <small>(XP total para o Nv. {{ jogador.nivel + 1 }})</small>
-            </li>
-            <li class="list-group-item">
-                <strong>Experiência de Trabalho:</strong> {{ "%.0f"|format(jogador.experiencia_trabalho) }}
-            </li>
-            <li class="list-group-item"><strong>Energia:</strong> {{ jogador.energia | int }} / 200
-            <li class="list-group-item"><strong>Dinheiro:</strong> {{ jogador.dinheiro | currency_format('R$', '.') }}</li>
-            <li class="list-group-item">
-                <strong>Gold: </strong>{{ "%.2f"|format(jogador.gold) }} Kg
-            </li>
-        </ul>
+                    {{ xp_needed | currency_format('', separator='.') }}
+                    <small>(XP total para o Nv. {{ jogador.nivel + 1 }})</small>
+                </p>
+                
+                {# BARRA DE PROGRESSO DE NÍVEL MAIS VISÍVEL #}
+                <div class="progress mb-3" style="height: 20px;">
+                    <div class="progress-bar bg-info" role="progressbar" style="width: {{ xp_progress }}%;" aria-valuenow="{{ jogador.experiencia }}" aria-valuemin="0" aria-valuemax="{{ xp_needed }}">
+                        <strong class="small text-dark">{{ "%.0f"|format(xp_progress) }}%</strong>
+                    </div>
+                </div>
+
+                <p class="mb-1">
+                    <strong><i class="fas fa-briefcase me-1"></i> Experiência de Trabalho:</strong> {{ "%.0f"|format(jogador.experiencia_trabalho) }} XP
+                </p>
+                
+            </div>
+        </div>
+        
     </div>
+
+    {# --- COLUNA DIREITA: LOCALIZAÇÃO E RANKING --- #}
     <div class="col-md-6">
-        <h3>Localização Atual:</h3>
-        <ul class="list-group mb-4">
-            <li class="list-group-item">
+        <h3 class="mt-4"><i class="fas fa-globe-americas me-2"></i>Localização Atual</h3>
+        
+        <div class="card mb-4">
+            <div class="card-body small">
+                
+                {# --- STATUS DE RESIDÊNCIA/VIAGEM --- #}
                 {% if jogador.regiao_atual.id != jogador.regiao_residencia_id %}
-                    {% if pedido_ativo and pedido_ativo.regiao_destino_id == jogador.regiao_atual.id %}
-                        <div class="alert alert-info py-2 mt-2 text-center">
-                            <strong>Pedido de Residência em:</strong><br>
-                            {{ jogador.regiao_atual.nome }}
+                    {% if pedido_ativo %}
+                        <div class="alert alert-info py-2 text-center">
+                            <strong><i class="fas fa-exclamation-triangle me-1"></i> Pedido Ativo para Residência em:</strong><br>
+                            {{ pedido_ativo.regiao_destino.nome }}
                             <p class="mb-1 small" id="residency-countdown" data-seconds="{{ tempo_restante_residencia }}">Calculando...</p>
-                            <form method="POST" action="{{ url_for('game_actions.cancel_residency') }}" class="d-inline ms-3">
-                                <button type="submit" class="btn btn-sm btn-danger">Cancelar</button>
+                            <form method="POST" action="{{ url_for('game_actions.cancel_residency') }}" class="d-inline mt-2">
+                                <button type="submit" class="btn btn-sm btn-danger">Cancelar Pedido</button>
                             </form>
                         </div>
                     {% else %}
-                        {% if not pedido_ativo and not viagem_ativa %}
-                        <div class="alert alert-info py-2 mt-2 text-center">
-                            <strong>{{ jogador.regiao_atual.nome }}<br></strong>
-                            Você não tem residência aqui.<br>
+                        {% if not viagem_ativa %}
+                        <div class="alert alert-warning py-2 text-center">
+                            <strong class="d-block">{{ jogador.regiao_atual.nome }}</strong>
+                            <i class="fas fa-map-marker-alt me-1"></i> Você está aqui, mas não é sua residência.<br>
                             <form class="mt-2" method="POST" action="{{ url_for('game_actions.request_residency', regiao_id=jogador.regiao_atual.id) }}">
                                 <button type="submit" class="btn btn-success btn-sm">Pedir Residência</button>
                             </form>
                         </div>
-                        {% elif pedido_ativo %}
-                        <div class="alert alert-warning py-2 mt-2 text-center">
-                            <strong>{{ jogador.regiao_atual.nome }}<br></strong>
-                            Pedido de residência já ativo em:<br>
-                            <strong>{{ pedido_ativo.regiao_destino.nome }}<br></strong>
+                        {% else %}
+                        <div class="alert alert-warning py-2 text-center">
+                            <strong class="d-block"><i class="fas fa-route me-1"></i> Você está em Viagem!</strong>
+                            <p class="small mb-0">Para {{ viagem_ativa.destino.nome }}</p>
                         </div>
                         {% endif %}
                     {% endif %}
                 {% else %}
-                    {% if viagem_ativa %}
-                    <div class="alert alert-warning py-2 mt-2 text-center">
-                        <strong>Você está em Viagem!<br></strong>
-                        {% set origem = jogador.regiao_atual.nome %}
-                        {% set destino = viagem_ativa.destino.nome %}
-                        <p class="small">{{ origem }}  <i class="fas fa-arrow-right"></i>  {{ destino }}</p>
+                    <div class="alert alert-success py-2 text-center">
+                        <strong class="d-block"><i class="fas fa-home me-1"></i> {{ jogador.regiao_atual.nome }}</strong>
+                        Sua residência oficial.
                     </div>
-                    {% else %}
-                        <div class="alert alert-success py-2 mt-2 text-center">
-                            <strong>{{ jogador.regiao_atual.nome }}<br></strong>
-                            Sua residência.
-                        </div>
-                    {% endif %}
-                    {% if not viagem_ativa %}
-                    <hr class="my-2">
-                    <div class="row small">
-                        <div class="col-md-3">
-                            <strong class="text-primary">Índice de Dev.:</strong><br>{{ "%.0f"|format(jogador.regiao_atual.indice_desenvolvimento) }} / 10
-                        </div>
-                        <div class="col-md-3">
-                            <strong class="text-secondary">Índice de<br>Saúde:</strong><br>{{ "%.0f"|format(jogador.regiao_atual.indice_saude * 10) }} / 10
-                        </div>
-                        <div class="col-md-3">
-                            <strong class="text-info">Índice de Educação:</strong><br>{{ "%.0f"|format(jogador.regiao_atual.indice_educacao * 10) }} / 10
-                        </div>
-                        <div class="col-md-3">
-                            <strong class="text-danger">Tributação na Localização:</strong><br>{{ (jogador.regiao_atual.taxa_imposto_geral * 100)|round(0) }}%
-                        </div>
-                    </div>
-                    {% endif %}
                 {% endif %}
-            </li>
-        </ul>
-        <h3 class="mt-4">Ranking Global:</h3>
+                
+                <hr class="my-2">
+                <div class="row text-center">
+                    <div class="col-md-6">
+                        <strong class="text-primary">Desenvolvimento:</strong><br>{{ "%.1f"|format(jogador.regiao_atual.indice_desenvolvimento) }}
+                    </div>
+                    <div class="col-md-6">
+                        <strong class="text-secondary">Saúde:</strong><br>{{ "%.0f"|format(jogador.regiao_atual.indice_saude * 10) }}
+                    </div>
+                    <div class="col-md-6">
+                        <strong class="text-info">Educação:</strong><br>{{ "%.0f"|format(jogador.regiao_atual.indice_educacao * 10) }}
+                    </div>
+                    <div class="col-md-6">
+                        <strong class="text-danger">Tributação:</strong><br>{{ (jogador.regiao_atual.taxa_imposto_geral * 100)|round(0) }}%
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+
+        {# RANKING GLOBAL #}
+        <h3 class="mt-4"><i class="fas fa-trophy me-2"></i>Ranking Global</h3>
         <div class="card col-md-12">
-            <ul class="list-group mt-2">
+            <div class="card-body">
                 <ul class="nav nav-tabs" id="rankTabs" role="tablist">
                 <li class="nav-item">
                     <a class="nav-link active" id="player-rank-tab" data-bs-toggle="tab" href="#player-rank" role="tab">Jogadores</a>
@@ -124,7 +134,7 @@
                                     <tr>
                                         <td>{{ loop.index }}</td>
                                         <td><strong>{{ jogador_rank.username }}</strong></td>
-                                        <td>{{ jogador_rank.experiencia | currency_format('', separator='.') }}</td>
+                                        <td>{{ jogador_rank.experiencia | currency_format('', separator='.') }} XP</td>
                                         <td>{{ jogador_rank.dinheiro | currency_format('R$', '.') }}</td>
                                     </tr>
                                     {% endfor %}
@@ -142,7 +152,7 @@
                                         <th>#</th>
                                         <th>Região</th>
                                         <th>Dev.</th>
-                                        <th>Educação</th>
+                                        <th>Edu.</th>
                                         <th>Saúde</th>
                                     </tr>
                                 </thead>
@@ -151,9 +161,9 @@
                                     <tr>
                                         <td>{{ loop.index }}</td>
                                         <td><strong>{{ regiao.nome }}</strong></td>
-                                        <td class="text-primary">{{ "%.1f"|format(regiao.indice_desenvolvimento) }}</td>
-                                        <td class="text-info">{{ "%.0f"|format(regiao.indice_educacao * 10) }}</td>
-                                        <td class="text-secondary">{{ "%.0f"|format(regiao.indice_saude * 10) }}</td>
+                                        <td class="text-primary">{{ "%.1f"|format(regiao.indice_desenvolvimento) }} / 10</td>
+                                        <td class="text-info">{{ "%.0f"|format(regiao.indice_educacao * 10) }} / 10</td>
+                                        <td class="text-secondary">{{ "%.0f"|format(regiao.indice_saude * 10) }} / 10</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
@@ -161,36 +171,33 @@
                         </div>
                     </div>
                 </div>
-            </ul>
+            </div>
         </div>
     </div>
 </div>
 
 <div class="row">
-<h2 class="mt-4">Melhorias de Habilidades</h2>
+<h2 class="mt-4"><i class="fas fa-hand-holding-heart me-2"></i>Melhorias de Habilidades</h2>
 
     {% set skills = [
-        ('educacao', 'Educação'), 
-        ('filantropia', 'Filantropia'), 
-        ('saude', 'Saúde')
+        ('educacao', 'Educação', 'fas fa-graduation-cap', 'text-info'), 
+        ('filantropia', 'Filantropia', 'fas fa-heart', 'text-warning'), 
+        ('saude', 'Saúde', 'fas fa-heartbeat', 'text-danger')
     ] %}
     
-    {% set skill_map = dict(skills) %}
     {% set treino_em_andamento = treino_ativo is not none %}
-    {% set is_armazem_training = treino_ativo.habilidade.startswith('armazem_') if treino_ativo else false %}
-    
-    {% set skill_name_display = skill_map[treino_ativo.habilidade] if treino_ativo and treino_ativo.habilidade in skill_map else treino_ativo.habilidade|capitalize %}
 
-    {% for skill_key, skill_name in skills %}
+    {% for skill_key, skill_name, icon, text_color in skills %}
         {% set info = jogador.get_skill_upgrade_info(skill_key) %}
         {% set current_level = jogador['habilidade_' + skill_key] %}
         {% set is_training_this = treino_ativo and treino_ativo.habilidade == skill_key %}
+        {% set is_armazem_training = treino_ativo.habilidade.startswith('armazem_') if treino_ativo else false %}
         {% set pode_pagar = jogador.dinheiro >= info.money and jogador.gold >= info.gold %}
 
     <div class="col-md-4 mb-4">
         <div class="card h-100">
             <div class="card-header bg-primary text-white">
-                {{ skill_name }} - Nível {{ "%.0f"|format(current_level) }}
+                <i class="{{ icon }} me-2"></i> {{ skill_name }} - Nível {{ "%.0f"|format(current_level) }}
             </div>
             <div class="card-body small">
                 
@@ -200,32 +207,34 @@
                             <div class="alert alert-info text-center" 
                                     id="countdown-{{ skill_key }}" 
                                     data-seconds="{{ tempo_restante_segundos }}">
-                                Treinando...
+                                <i class="fas fa-clock me-1"></i> Treinando...
                             </div>
                             <p class="text-center small">Conclusão: {{ treino_ativo.data_fim | datetime_local }}</p>
                     
                         {% elif is_armazem_training %}                    
-                            <div class="alert alert-warning">
-                                Melhoria de Armazém em andamento.
+                            <div class="alert alert-warning py-1 small">
+                                <i class="fas fa-warehouse me-1"></i> Melhoria de Armazém em andamento.
                             </div>
                         {% else %}
-                            <div class="alert alert-danger py-1 small">Habilidade {{ skill_name_display }} sendo treinada.</div>
+                            <div class="alert alert-danger py-1 small">
+                                <i class="fas fa-exclamation-circle me-1"></i> Outra Habilidade sendo treinada.
+                            </div>
                         {% endif %}
                     
                 {% else %}
                     <p class="mb-1"><strong>Melhoria:</strong> Nível {{ "%.0f"|format(info.next_level) }}</p>
-                    <p class="mb-1"><strong>Efeito:</strong> {{ info.effect }}</p>
-                    <p class="mb-1"><strong>Dinheiro:</strong> {{ info.money | currency_format('R$', '.') }}
+                    <p class="mb-1"><strong>Efeito:</strong> <span class="{{ text_color }}">{{ info.effect }}</span></p>
+                    <p class="mb-1"><strong><i class="fas fa-coins me-1"></i> Dinheiro:</strong> {{ info.money | currency_format('R$', '.') }}
                             {% if jogador.dinheiro >= info.money %}✅{% else %}❌{% endif %}</p>
-                    <p class="mb-1"><strong>Gold:</strong> {{ "%.2f"|format(info.gold) }} Kg
+                    <p class="mb-1"><strong><i class="fas fa-dice-d20 me-1"></i> Gold:</strong> {{ "%.2f"|format(info.gold) }} Kg
                             {% if jogador.gold >= info.gold %}✅{% else %}❌{% endif %}</p>
-                    <p class="mb-1"><strong>Tempo:</strong> {{ info.time }} minutos</p>
+                    <p class="mb-1"><strong><i class="fas fa-clock me-1"></i> Tempo:</strong> {{ info.time }} minutos</p>
                     <hr class="my-2">
                     <form method="POST" action="{{ url_for('skill_development.train_skill', skill_key=skill_key) }}">
                         <button type="submit" 
-                                class="btn btn-sm btn-success mt-2" 
-                                {% if jogador.dinheiro < info.money or jogador.gold < info.gold %}disabled{% endif %}>
-                            Treinar {{ skill_name }}
+                                class="btn btn-sm btn-success mt-2 w-100" 
+                                {% if not pode_pagar %}disabled{% endif %}>
+                            <i class="fas fa-bolt me-1"></i> Treinar {{ skill_name }}
                         </button>
                     </form>
                 {% endif %}
@@ -235,8 +244,9 @@
     {% endfor %}
 </div>
 
+{# --- SEÇÃO DE HISTÓRICO --- #}
 <div class="row">
-<h2 class="mt-4">Ações Recentes</h2>
+<h2 class="mt-4"><i class="fas fa-history me-2"></i>Ações Recentes</h2>
     <div class="col-md-12">
         <ul class="list-group mb-4">
             {% set acoes_recentes = jogador.historico_acoes[:8] %} 
@@ -244,10 +254,11 @@
             {% if acoes_recentes %}
                 {% for acao in acoes_recentes %}
                     {% set cor = 'text-success' if acao.dinheiro_delta >= 0 or acao.gold_delta >= 0 else 'text-danger' %}
+                    {% set icon_type = 'fas fa-plus-circle' if acao.dinheiro_delta >= 0 or acao.gold_delta >= 0 else 'fas fa-minus-circle' %}
+                    
                     <li class="list-group-item d-flex justify-content-between align-items-center">
-                        
                         <span class="{{ cor }} small">
-                            {{ acao.tipo_acao | action_format }}
+                            <i class="{{ icon_type }} me-1"></i> {{ acao.tipo_acao | action_format }}
                         </span>
                         <span class="flex-grow-1 ms-3 me-3">{{ acao.descricao }}</span>
                         <span class="small text-muted">{{ acao.timestamp | datetime_local }}</span> 

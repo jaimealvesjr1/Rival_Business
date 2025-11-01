@@ -2,6 +2,7 @@ from flask import render_template, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
 from app.work import bp
 from app.models import ViagemAtiva, CampoAgricola
+from app.game_actions.forms import OpenCompanyForm, OpenCampoForm
 from config import Config
 from datetime import datetime
 
@@ -38,6 +39,9 @@ def work_dashboard():
     farm_slots_max = current_app.config['FARMING_FIELD_MAX_SLOTS']
     farm_max_uses = current_app.config['FARMING_FIELD_MAX_USES']
 
+    form_empresa = OpenCompanyForm()
+    form_campo = OpenCampoForm()
+
     return render_template('work/work_dashboard.html',
                            title=f'Trabalho em {regiao.nome}',
                            jogador=jogador,
@@ -50,4 +54,7 @@ def work_dashboard():
                            FARMING_FIELD_MAX_SLOTS=current_app.config['FARMING_FIELD_MAX_SLOTS'],
                            FARMING_FIELD_MAX_USES=current_app.config['FARMING_FIELD_MAX_USES'],
                            farm_slots_max=farm_slots_max,
-                           farm_max_uses=farm_max_uses, **footer)
+                           farm_max_uses=farm_max_uses,
+                           form_empresa=form_empresa,
+                           form_campo=form_campo,
+                           **footer)

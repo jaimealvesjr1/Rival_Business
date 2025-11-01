@@ -4,13 +4,16 @@
 {% block content %}
     <div class="row">
         <div class="col-md-6 offset-md-3">
-            <h2 class="mt-4">Registro de Novo Jogador</h2>
+            <h2 class="mt-4"><i class="fas fa-user-plus me-2"></i>Novo Jogador</h2>
             <form method="POST" action="">
                 {{ form.hidden_tag() }}
                 
                 <div class="mb-3">
                     {{ form.username.label(class="form-control-label") }}
-                    {{ form.username(class="form-control", placeholder="Seu nome de usuário") }}
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-user"></i></span>
+                        {{ form.username(class="form-control", placeholder="Seu nome de usuário") }}
+                    </div>
                     {% for error in form.username.errors %}
                         <small class="text-danger">{{ error }}</small>
                     {% endfor %}
@@ -18,16 +21,24 @@
 
                 <div class="mb-3">
                     {{ form.regiao_inicial_id.label(class="form-control-label") }}
-                    {{ form.regiao_inicial_id(class="form-control") }}
-                    {% for error in form.regiao_inicial_id.errors %}
-                        <small class="text-danger">{{ error }}</small>
-                    {% endfor %}
+                    <div class="mb-3 card p-2">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-globe-americas"></i></span>
+                            {{ form.regiao_inicial_id(class="form-control form-select") }}
+                        </div>
+                        {% for error in form.regiao_inicial_id.errors %}
+                            <small class="text-danger">{{ error }}</small>
+                        {% endfor %}
+                        <small class="text-muted text-white mt-2">Sua região de residência inicial. Isto afeta seus bónus iniciais.</small>
+                    </div>
                 </div>
-
                 
                 <div class="mb-3">
                     {{ form.password.label(class="form-control-label") }}
-                    {{ form.password(class="form-control", placeholder="Sua senha secreta") }}
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-key"></i></span>
+                        {{ form.password(class="form-control", placeholder="Sua senha secreta") }}
+                    </div>
                     {% for error in form.password.errors %}
                         <small class="text-danger">{{ error }}</small>
                     {% endfor %}
@@ -35,14 +46,19 @@
                 
                 <div class="mb-3">
                     {{ form.confirm_password.label(class="form-control-label") }}
-                    {{ form.confirm_password(class="form-control", placeholder="Confirme sua senha") }}
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-key"></i></span>
+                        {{ form.confirm_password(class="form-control", placeholder="Confirme sua senha") }}
+                    </div>
                     {% for error in form.confirm_password.errors %}
                         <small class="text-danger">{{ error }}</small>
                     {% endfor %}
                 </div>
                 
                 <div class="mb-3">
-                    {{ form.submit(class="btn btn-primary") }}
+                    <button type="submit" class="btn btn-rivalbusiness w-100">
+                        <i class="fas fa-plus me-1"></i> Registrar
+                    </button>
                 </div>
             </form>
             <p class="mt-3">Já tem conta? <a href="{{ url_for('auth.login') }}">Faça Login</a></p>

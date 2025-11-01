@@ -61,11 +61,8 @@ def start_planting(jogador: Jogador, campo: CampoAgricola, energia_gasta: int):
         
         campo.usos_restantes -= 1
         
-        # Se os usos acabaram, bota o campo para descansar
-        if campo.usos_restantes <= 0:
-            tempo_descanso_h = current_app.config['FARMING_FIELD_REST_HOURS']
-            campo.data_descanso_fim = datetime.utcnow() + timedelta(hours=tempo_descanso_h)
-            
+        # Lógica de descanso REMOVIDA daqui. Será aplicada no background_tasks após a colheita.
+        
         db.session.add(novo_plantio)
         db.session.add(jogador)
         db.session.add(campo)
@@ -75,4 +72,3 @@ def start_planting(jogador: Jogador, campo: CampoAgricola, energia_gasta: int):
     except Exception as e:
         db.session.rollback()
         return (False, f"Erro ao iniciar plantio: {e}")
-    

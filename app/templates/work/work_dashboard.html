@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import 'bootstrap/wtf.html' as wtf %}
 
 {% block content %}
     
@@ -7,62 +8,68 @@
 {% set limite_atingido = jogador.empresas_proprias | length >= jogador.get_max_empresas() %}
 {% set residente = regiao.id == jogador.regiao_residencia_id %}
 
-<h1 class="mt-4">Trabalho - {{ regiao.nome }}</h1>
-    <p class="lead">Busque recursos e desenvolva suas empresas.</p>    
+<h1 class="mt-4"><i class="fas fa-briefcase me-2"></i>Trabalho - {{ regiao.nome }}</h1>    
 
+{# --- STATUS GERAL DA REGIÃO --- #}
 <div class="card mb-4 bg-light">
     <div class="card-body">
         <div class="row">
             <div class="col-md-12">
-                <p><strong>Experiência de Trabalho:</strong>: {{ "%.0f"|format(jogador.experiencia_trabalho) }} XP</p>
+                <p class="mb-0"><strong><i class="fas fa-hammer me-1"></i> Experiência de Trabalho:</strong>: {{ "%.0f"|format(jogador.experiencia_trabalho) }} XP</p>
             </div>
         </div>
         <hr class="my-2">
-        <div class="row small">
-            <div class="col-md-3">
-                <strong class="text-primary">Índice de Desenvolvimento:</strong><br>{{ "%.0f"|format(regiao.indice_desenvolvimento) }} / 10
+        <div class="row small text-center">
+            <div class="col-md-6">
+                <strong class="text-primary">Desenvolvimento:</strong><br>{{ "%.0f"|format(regiao.indice_desenvolvimento) }} / 10
             </div>
-            <div class="col-md-3">
-                <strong class="text-secondary">Índice de Saúde:</strong><br>{{ "%.0f"|format(regiao.indice_saude * 10) }} / 10
+            <div class="col-md-6">
+                <strong class="text-secondary">Saúde:</strong><br>{{ "%.0f"|format(regiao.indice_saude * 10) }} / 10
             </div>
-            <div class="col-md-3">
-                <strong class="text-info">Índice de Educação:</strong><br>{{ "%.0f"|format(regiao.indice_educacao * 10) }} / 10
+            <div class="col-md-6">
+                <strong class="text-info">Educação:</strong><br>{{ "%.0f"|format(regiao.indice_educacao * 10) }} / 10
             </div>
-            <div class="col-md-3">
-                <strong class="text-danger">Tributação na Localização:</strong><br>{{ (regiao.taxa_imposto_geral * 100)|round(0) }}%
+            <div class="col-md-6">
+                <strong class="text-danger">Tributação:</strong><br>{{ (regiao.taxa_imposto_geral * 100)|round(0) }}%
             </div>
         </div>
     </div>
 </div>
 
+{# --- SEÇÃO DE ESTATAIS (Mineração) --- #}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="mt-4">Estatais</h2>
-    <div class="btn-group">
-        <a class="btn btn-success text-white">Trocar Experiências</a>
-    </div>
+    <h2 class="mt-4"><i class="fas fa-industry me-2"></i>Estatais (Mineração)</h2>
 </div>
 <div class="row">
     {% for empresa in fabricas_estatais %}
     {% if empresa.tipo == 'estatal' %}
-    {% set route_name = 'game_actions.mine_gold' if empresa.produto == 'ouro' else 'game_actions.mine_iron' %}
-    {% set reserva_para_uso = regiao.reserva_ouro if empresa.produto == 'ouro' else regiao.reserva_ferro %}
+    
+    {% set is_gold = empresa.produto == 'ouro' %}
+    {% set route_name = 'game_actions.mine_gold' if is_gold else 'game_actions.mine_iron' %}
+    {% set reserva_para_uso = regiao.reserva_ouro if is_gold else regiao.reserva_ferro %}
+    {% set icon = 'fas fa-mountain' if is_gold else 'fas fa-hammer' %}
+    {% set header_class = 'bg-warning' if is_gold else 'bg-ferro text-white' %}
+
     <div class="col-md-6 mb-4">
         <div class="card text-center h-100">
-            <div class="card-header {% if empresa.produto == 'ouro' %}bg-warning{% elif empresa.produto =='ferro' %}bg-ferro text-white{% endif %}">
-                <strong>{{ empresa.nome }}</strong><br>
-                {% if empresa.produto == 'ouro' %}
-                <label for="nova_taxa_{{ empresa.id }}" class="mr-2 small">Reserva: {{ regiao.reserva_ouro | currency_format('', separator='.') }} Kg / {{ regiao.reserva_ouro_max | currency_format('', separator='.') }} Kg</label>
-                {% elif empresa.produto == 'ferro' %}
-                <label for="nova_taxa_{{ empresa.id }}" class="mr-2 small">Reserva: {{ regiao.reserva_ferro | currency_format('', separator='.') }} toneladas / {{ regiao.reserva_ferro_max | currency_format('', separator='.') }} toneladas</label>
-                {% endif %}
+            <div class="card-header {{ header_class }}">
+                <i class="{{ icon }} me-2"></i><strong>{{ empresa.nome }}</strong>
             </div>
             <div class="card-body small">
                 <p class="mb-2">Lucro da Empresa: <strong>{{ (empresa.taxa_lucro * 100)|round(0) }}%</strong></p>
+                <p class="mb-2 {% if is_gold %}text-warning{% else %}texto-ferro{% endif %}">
+                    Reserva: 
+                    {% if is_gold %}
+                        {{ regiao.reserva_ouro | currency_format('', separator='.') }} Kg / {{ regiao.reserva_ouro_max | currency_format('', separator='.') }} Kg
+                    {% else %}
+                        {{ regiao.reserva_ferro | currency_format('', separator='.') }} ton / {{ regiao.reserva_ferro_max | currency_format('', separator='.') }} ton
+                    {% endif %}
+                </p>
                 
                 <form method="POST" action="{{ url_for(route_name, empresa_id=empresa.id) }}" class="d-flex justify-content-center align-items-center">
                     
                     <div class="form-group me-2"> 
-                        <select class="form-control" name="energia_gasta" id="energia_gasta_{{ empresa.id }}">
+                        <select class="form-control form-control-sm" name="energia_gasta" id="energia_gasta_{{ empresa.id }}">
                             {% for i in opcoes_energia %}
                                 <option value="{{ i }}">-{{ i }} E</option>
                             {% endfor %}
@@ -70,7 +77,7 @@
                     </div>
 
                     <button type="submit" 
-                            class="btn btn-primary"
+                            class="btn btn-sm btn-primary"
                             {% if not opcoes_energia or reserva_para_uso <= 0 %}disabled{% endif %}>
                         Trabalhar
                     </button>
@@ -84,14 +91,55 @@
     {% endfor %}
 </div>    
 
+{# --- SEÇÃO DE EMPRESAS PRIVADAS --- #}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="form-group mt-4">Empresas Privadas</h2>
+    <h2 class="form-group mt-4"><i class="fas fa-building me-2"></i>Empresas Privadas</h2>
     <div class="btn-group">
-        <a href="{{ url_for('game_actions.open_company_view') }}" class="btn btn-success 
-            {% if not pode_abrir or limite_atingido or not residente %}disabled{% endif %}" 
-            role="button">
-            Abrir Empresa
-        </a>
+        <details>
+            <summary class="btn btn-success 
+                {% if not pode_abrir or limite_atingido or not residente %}disabled{% endif %}">
+                <i class="fas fa-plus me-1"></i> Abrir Empresa
+            </summary>
+            {# CONTEÚDO DO open_company_form.html AGORA INCORPORADO #}
+            <div class="card card-body mt-2">
+                <p class="lead">Defina o nome e a taxa de lucro da sua nova empresa.</p>
+                
+                <div class="alert alert-primary mb-3 small">
+                    <p class="mb-0">
+                        <strong><i class="fas fa-hand-holding-usd me-1"></i> Custo de Abertura:</strong> 
+                        R$ {{ custos.money | currency_format('', '.') }} 
+                        <span class="badge bg-success ms-2">{% if jogador.dinheiro >= custos.money %}Dinheiro OK{% else %}❌{% endif %}</span>
+                        
+                        e G{{ custos.gold | currency_format('', separator='') }}
+                        <span class="badge bg-warning ms-2">{% if jogador.gold >= custos.gold %}Gold OK{% else %}❌{% endif %}</span>
+                    </p>
+                </div>
+                
+                <form method="POST" action="{{ url_for('game_actions.open_company_view') }}">
+                    {{ form_empresa.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        {{ wtf.form_field(form_empresa.nome) }}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form_empresa.taxa_lucro.label(class="form-control-label") }}
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-percent"></i></span>
+                            {{ form_empresa.taxa_lucro(class="form-control", placeholder="0.15 para 15%") }}
+                        </div>
+                        {% for error in form_empresa.taxa_lucro.errors %}
+                            <small class="text-danger">{{ error }}</small>
+                        {% endfor %}
+                    </div>
+                    
+                    <button type="submit" class="btn btn-success mt-3" {% if not pode_abrir or limite_atingido or not residente %}disabled{% endif %}>
+                        <i class="fas fa-cash-register me-1"></i> Confirmar Abertura
+                    </button>
+                </form>
+            </div>
+            {# FIM CONTEÚDO INCORPORADO #}
+        </details>
     </div>
 </div>
 
@@ -99,30 +147,37 @@
 <div class="row mt-4">
     {% for empresa in fabricas_privadas %}
         {% set is_owner = empresa.proprietario_id == jogador.id %}
-        {% set reserva_para_uso = regiao.reserva_ouro if empresa.produto == 'ouro' else regiao.reserva_ferro %}
-        {% set route_name = 'game_actions.mine_gold' if empresa.produto == 'ouro' else 'game_actions.mine_iron' %}
+        {% set is_gold = empresa.produto == 'ouro' %}
+        {% set reserva_para_uso = regiao.reserva_ouro if is_gold else regiao.reserva_ferro %}
+        {% set route_name = 'game_actions.mine_gold' if is_gold else 'game_actions.mine_iron' %}
+        
         <div class="col-md-6 mb-4">
             <div class="card h-100 {% if is_owner %}border-primary{% else %}border-info{% endif %}">
                 <div class="card-header {% if is_owner %}bg-primary text-white{% else %}bg-info text-white{% endif %}">
-                    {{ empresa.nome }}
-                    {% if empresa.produto == 'ouro' %} Extração de Ouro Ltda.
-                    {% elif empresa.produto == 'ferro' %} Mineração Ltda.
+                    <i class="fas fa-user-tie me-1"></i> {{ empresa.nome }}
+                    {% if is_gold %} (Ouro)
+                    {% elif empresa.produto == 'ferro' %} (Ferro)
                     {% endif %}
                     - Dono: {{ empresa.proprietario.username }}
                 </div>
                 <div class="card-body small">
+                    
+                {# LÓGICA DO PROPRIETÁRIO (ADMINISTRAÇÃO) #}
                 {% if is_owner %}
                     <p class="mb-1">Caixa da Empresa: {{ empresa.dinheiro | currency_format('R$', '.') }}</p>
+                    <p class="mb-1">Lucro da Empresa: <strong>{{ (empresa.taxa_lucro * 100)|round(0) }}%</strong></p>
                     
-                    {# FORMULÁRIO DE AJUSTE DE TAXA (MANTIDO) #}
+                    {# FORMULÁRIO DE AJUSTE DE TAXA #}
                     <form method="POST" action="{{ url_for('game_actions.adjust_tax', empresa_id=empresa.id) }}" class="d-flex align-items-center mt-2">
+                        <input type="number" name="nova_taxa" min="0.01" max="0.99" step="0.01" 
+                               value="{{ empresa.taxa_lucro }}" class="form-control form-control-sm me-2" style="width: 100px;">
                         <button type="submit" class="btn btn-sm btn-primary">Ajustar Taxa</button>
                     </form>
                     
                     <hr class="my-3">
                     
                     {# FORMULÁRIO DE TRABALHO DO PROPRIETÁRIO #}
-                    <p class="mb-1">Trabalhar:</p>
+                    <p class="mb-1">Trabalhar como Proprietário (100% Lucro, 0% Taxa):</p>
                     <form method="POST" action="{{ url_for(route_name, empresa_id=empresa.id) }}" class="d-flex align-items-center mt-2">
                         <div class="form-group me-2">
                             <select class="form-control form-control-sm" name="energia_gasta" id="energia_gasta_owner_{{ empresa.id }}">
@@ -133,16 +188,16 @@
                         </div>
                         <button type="submit" class="btn btn-sm btn-warning" 
                             {% if not opcoes_energia or reserva_para_uso <= 0 %}disabled{% endif %}>
-                            Trabalhar
+                            <i class="fas fa-gavel me-1"></i> Explorar
                         </button>
                     </form>
                     
+                {# LÓGICA DO TRABALHADOR (CLASSE INFO) #}
                 {% else %}
-                    {# BLOCO DO TRABALHADOR #}
                     <p class="mb-1">Lucro da Empresa: <strong>{{ (empresa.taxa_lucro * 100)|round(0) }}%</strong></p>
-                    <p class="mb-1">Lucro do Trabalhador: <strong>{{ ((1 - empresa.taxa_lucro) * 100)|round(0) }}%</strong></p>
+                    <p class="mb-1">Seu Lucro Líquido: <strong>{{ ((1 - empresa.taxa_lucro) * 100)|round(0) }}%</strong></p>
                     
-                    <form method="POST" action="{{ url_for(route_name, empresa_id=empresa.id) }}" class="form-inline mt-3">
+                    <form method="POST" action="{{ url_for(route_name, empresa_id=empresa.id) }}" class="d-flex align-items-center mt-3">
                         <div class="form-group me-2">
                             <select class="form-control form-control-sm" name="energia_gasta" id="energia_gasta_private_{{ empresa.id }}">
                                 {% for i in opcoes_energia %}
@@ -151,7 +206,7 @@
                             </select>
                         </div>
                         <button type="submit" class="btn btn-sm btn-info" {% if not opcoes_energia or reserva_para_uso <= 0 %}disabled{% endif %}>
-                            Trabalhar
+                            <i class="fas fa-hand-rock me-1"></i> Trabalhar
                         </button>
                     </form>
                 {% endif %}
@@ -163,18 +218,26 @@
 {% else %}
 <p>Nenhuma empresa privada nesta localização.</p>
 {% endif %}
+
 <div class="alert alert-secondary small">
-    Requisitos para Abrir Empresa:
+    <strong>Requisitos para Abrir Empresa Privada:</strong>
     <ul class="mb-0">
-        <li>Nível Mínimo (Nv 5): <strong>{% if jogador.nivel >= 5 %}✅{% else %}❌{% endif %}</strong></li>
-        <li>Residência na Localização: <strong>{% if residente %}✅{% else %}❌{% endif %}</strong></li>
-        <li>Empresas (Limite {{ jogador.empresas_proprias | length }}/{{ jogador.get_max_empresas() }}): <strong>{% if limite_atingido %}❌{% else %}✅{% endif %}</strong></li>
-        <li>Custo: <strong>{{ custos.money | currency_format('R$') }} {% if jogador.dinheiro >= custos.money %}✅{% else %}❌{% endif %}</strong> e Gold: <strong>{{ custos.gold | currency_format('', separator='') }} Kg {% if jogador.gold >= custos.gold %}✅{% else %}❌{% endif %}</strong></li>
+        <li><i class="fas fa-level-up-alt"></i> Nível Mínimo (Nv 5): <strong>{% if jogador.nivel >= 5 %}✅{% else %}❌{% endif %}</strong></li>
+        <li><i class="fas fa-home"></i> Residência na Localização: <strong>{% if residente %}✅{% else %}❌{% endif %}</strong></li>
+        <li><i class="fas fa-building"></i> Empresas (Limite {{ jogador.empresas_proprias | length }}/{{ jogador.get_max_empresas() }}): <strong>{% if limite_atingido %}❌{% else %}✅{% endif %}</strong></li>
+        <li><i class="fas fa-coins"></i> Custo: <strong>{{ custos.money | currency_format('R$') }} {% if jogador.dinheiro >= custos.money %}✅{% else %}❌{% endif %}</strong> e <i class="fas fa-dice-d20"></i> Gold: <strong>{{ custos.gold | currency_format('', separator='') }} Kg {% if jogador.gold >= custos.gold %}✅{% else %}❌{% endif %}</strong></li>
     </ul>
 </div>
 
+{# --- SEÇÃO DE CAMPOS AGRÍCOLAS (NOVA ESTILIZAÇÃO) --- #}
+{% set custos_campo = jogador.get_open_campo_cost() %}
+{% set pode_comprar_campo = (jogador.dinheiro >= custos_campo.money and 
+                                   jogador.gold >= custos_campo.gold and 
+                                   jogador.nivel >= 2 and 
+                                   jogador.campos_proprios | length < jogador.get_max_campos()) %}
+
 <div class="d-flex justify-content-between align-items-center mb-4 mt-5">
-    <h2 class="mb-3 mt-4">Campos Agrícolas</h2>
+    <h2 class="mb-3 mt-4"><i class="fas fa-leaf me-2"></i>Campos Agrícolas</h2>
     <div class="btn-group">
         {% set custos_campo = jogador.get_open_campo_cost() %}
         {% set pode_comprar_campo = (jogador.dinheiro >= custos_campo.money and 
@@ -182,11 +245,48 @@
                                    jogador.nivel >= 2 and 
                                    jogador.campos_proprios | length < jogador.get_max_campos()) %}
                                    
-        <a href="{{ url_for('game_actions.open_campo_view') }}" class="btn btn-success
-            {% if not pode_comprar_campo %}disabled{% endif %}" 
-            role="button">
-            Comprar Campo
-        </a>
+        <details>
+            <summary class="btn btn-success {% if not pode_comprar_campo %}disabled{% endif %}">
+                <i class="fas fa-plus me-1"></i> Comprar Campo
+            </summary>
+            {# CONTEÚDO DO open_campo_form.html AGORA INCORPORADO #}
+            <div class="card card-body mt-2">
+                <p class="lead">Compre seu primeiro pedaço de terra e comece a plantar.</p>
+                
+                <div class="alert alert-primary mb-3 small">
+                    <p class="mb-0">
+                        <strong><i class="fas fa-hand-holding-usd me-1"></i> Custo de Compra:</strong> 
+                        R$ {{ custos_campo.money | currency_format('', '.') }} 
+                        <span class="badge bg-success ms-2">{% if jogador.dinheiro >= custos_campo.money %}Dinheiro OK{% else %}❌{% endif %}</span>
+                        
+                        e G{{ custos_campo.gold | currency_format('', separator='') }}
+                        <span class="badge bg-warning ms-2">{% if jogador.gold >= custos_campo.gold %}Gold OK{% else %}❌{% endif %}</span>
+                    </p>
+                </div>
+                
+                <form method="POST" action="{{ url_for('game_actions.open_campo_view') }}">
+                    {{ form_campo.hidden_tag() }}
+                    
+                    {{ wtf.form_field(form_campo.nome) }}
+                    
+                    <div class="mb-3">
+                        {{ form_campo.taxa_lucro.label(class="form-control-label") }}
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-percent"></i></span>
+                            {{ form_campo.taxa_lucro(class="form-control", placeholder="0.10 para 10%") }}
+                        </div>
+                        {% for error in form_campo.taxa_lucro.errors %}
+                            <small class="text-danger">{{ error }}</small>
+                        {% endfor %}
+                    </div>
+                    
+                    <button type="submit" class="btn btn-success mt-3" {% if not pode_comprar_campo %}disabled{% endif %}>
+                        <i class="fas fa-cash-register me-1"></i> Comprar Campo
+                    </button>
+                </form>
+            </div>
+            {# FIM CONTEÚDO INCORPORADO #}
+        </details>
     </div>
 </div>
 
@@ -197,51 +297,50 @@
         {% set em_descanso = campo.data_descanso_fim and campo.data_descanso_fim > utcnow %}
         {% set slots_ocupados = campo.plantios_ativos.count() %}
         {% set slots_max = FARMING_FIELD_MAX_SLOTS %}
-        {% set pode_plantar = not em_descanso and slots_ocupados < farm_slots_max %}
+        {% set pode_plantar = not em_descanso and slots_ocupados < farm_slots_max and opcoes_energia %}
         
         <div class="col-md-6 mb-4">
             <div class="card h-100 {% if is_owner %}border-primary{% else %}border-success{% endif %}">
                 <div class="card-header {% if is_owner %}bg-primary text-white{% else %}bg-success text-white{% endif %}">
-                    {{ campo.nome }} (Dono: {{ campo.proprietario.username }})
+                    <i class="fas fa-seedling me-1"></i> {{ campo.nome }} (Dono: {{ campo.proprietario.username }})
                 </div>
                 <div class="card-body small">
                 
+                    {# --- STATUS DE DESCANSO --- #}
                     {% if em_descanso %}
                         <div class="alert alert-warning text-center">
-                            <strong>EM DESCANSO</strong><br>
-                            <small>Próxima Safra em: <span data-seconds="{{ (campo.data_descanso_fim - utcnow).total_seconds() | int }}">...</span></small>
+                            <strong><i class="fas fa-bed me-1"></i> EM DESCANSO</strong><br>
+                            <small>Fim do Descanso: <span data-seconds="{{ (campo.data_descanso_fim - utcnow).total_seconds() | int }}">...</span></small>
                         </div>
                     {% else %}
                         <p class="mb-1">Taxa do Dono: <strong>{{ (campo.taxa_lucro * 100)|round(0) }}%</strong></p>
                         <p class="mb-1">Safras Restantes: <strong>{{ campo.usos_restantes }} / {{ FARMING_FIELD_MAX_USES }}</strong></p>
-                        <p class="mb-1">Custo (por 10 Energia): 
+                        <p class="mb-1"><i class="fas fa-dollar-sign"></i> Custo (por 10 Energia): 
                             <strong>{{ FARMING_COST_MONEY_PER_10_ENERGY | currency_format('R$', '.') }}</strong>
                         </p>
 
                         <hr class="my-2">
 
-                        <h6 class="small">Campos de Plantio:</h6>
-                        <ul class="list-unstyled">
+                        <h6 class="small"><i class="fas fa-layer-group"></i> Slots de Plantio ({{ slots_ocupados }}/{{ slots_max }}):</h6>
+                        <ul class="list-unstyled mb-3 ms-3">
                             {% for plantio in campo.plantios_ativos %}
-                            <li class="small text-muted mb-2">
+                            <li class="small text-muted mb-1">
                                 <i class="fas fa-hourglass-half me-1"></i>
-                                Campo cultivado por <strong>{{ plantio.jogador.username }}</strong>
-                                <br>
-                                <strong class="ms-3">Próxima Colheita</strong> <span data-seconds="{{ (plantio.data_fim - utcnow).total_seconds() | int }}">...</span>
+                                Cultivado por <strong>{{ plantio.jogador.username }}</strong>. <span data-seconds="{{ (plantio.data_fim - utcnow).total_seconds() | int }}">...</span>
                             </li>
                             {% endfor %}
                             
                             {% set slots_livres = slots_max - slots_ocupados %}
                             {% for i in range(slots_livres) %}
                             <li class="small text-success">
-                                <i class="fas fa-check-circle me-1"></i>
-                                Campo disponível para plantio
+                                <i class="fas fa-check-circle me-1"></i> Slot disponível
                             </li>
                             {% endfor %}
                         </ul>
                     
                         <hr class="my-3">
                         
+                        {# FORMULÁRIO DE PLANTIO #}
                         <form method="POST" action="{{ url_for('game_actions.plant_corn', campo_id=campo.id) }}" class="d-flex align-items-center">
                             <div class="form-group me-2">
                                 <select class="form-control form-control-sm" name="energia_gasta" id="energia_gasta_campo_{{ campo.id }}">
@@ -251,8 +350,8 @@
                                 </select>
                             </div>
                             <button type="submit" class="btn btn-sm btn-success" 
-                                {% if not opcoes_energia or not pode_plantar %}disabled{% endif %}>
-                                Plantar Milho
+                                {% if not pode_plantar %}disabled{% endif %}>
+                                <i class="fas fa-tractor me-1"></i> Plantar Milho
                             </button>
                         </form>
                     {% endif %}
@@ -267,12 +366,12 @@
 {% endif %}
 
 <div class="alert alert-secondary small">
-    Requisitos para Comprar Campo:
+    <strong>Requisitos para comprar Campo Agrícola:</strong>
     <ul class="mb-0">
-        <li>Nível Mínimo (Nv 2): <strong>{% if jogador.nivel >= 2 %}✅{% else %}❌{% endif %}</strong></li>
-        <li>Residência na Localização: <strong>{% if residente %}✅{% else %}❌{% endif %}</strong></li>
-        <li>Campos (Limite {{ jogador.campos_proprios | length }}/{{ jogador.get_max_campos() }}): <strong>{% if jogador.campos_proprios | length < jogador.get_max_campos() %}✅{% else %}❌{% endif %}</strong></li>
-        <li>Custo: <strong>{{ custos_campo.money | currency_format('R$') }}{% if jogador.dinheiro >= custos_campo.money %}✅{% else %}❌{% endif %}</strong> e Gold: <strong>{{ custos_campo.gold | currency_format('', separator='') }} Kg {% if jogador.gold >= custos_campo.gold %}✅{% else %}❌{% endif %}</strong></li>
+        <li><i class="fas fa-level-up-alt"></i> Nível Mínimo (Nv 2): <strong>{% if jogador.nivel >= 2 %}✅{% else %}❌{% endif %}</strong></li>
+        <li><i class="fas fa-home"></i> Residência na Localização: <strong>{% if residente %}✅{% else %}❌{% endif %}</strong></li>
+        <li><i class="fas fa-layer-group"></i> Campos (Limite {{ jogador.campos_proprios | length }}/{{ jogador.get_max_campos() }}): <strong>{% if jogador.campos_proprios | length < jogador.get_max_campos() %}✅{% else %}❌{% endif %}</strong></li>
+        <li><i class="fas fa-coins"></i> Custo: <strong>{{ custos_campo.money | currency_format('R$') }}{% if jogador.dinheiro >= custos_campo.money %}✅{% else %}❌{% endif %}</strong> e <i class="fas fa-dice-d20"></i> Gold: <strong>{{ custos_campo.gold | currency_format('', separator='') }} Kg {% if jogador.gold >= custos_campo.gold %}✅{% else %}❌{% endif %}</strong></li>
     </ul>
 </div>
 {% endblock %}

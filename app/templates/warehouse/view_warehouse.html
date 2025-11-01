@@ -1,194 +1,256 @@
 {% extends "base.html" %}
 
 {% block content %}
-{% set armazem = jogador.armazem %}
-{% set peso_atual = (armazem.recursos | sum(attribute='quantidade')) | default(0.0) %}
-{% set treino_em_andamento = treino_ativo is not none %}
+    
+    {# VARIÁVEIS PASSADAS PELA ROTA #}
+    {% set armazem = jogador.armazem %}
+    {% set peso_atual = (armazem.recursos | sum(attribute='quantidade')) | default(0.0) %}
+    {% set treino_em_andamento = treino_ativo is not none %}
 
-<h1 class="mt-4">Armazém de {{ jogador.username }}</h1>
+    <h1 class="mt-4"><i class="fas fa-warehouse me-2"></i>Armazém de {{ jogador.username }}</h1>
     <p class="lead">Cuide de seus recursos e logística.</p>
 
-{# --- PAINEL DE STATUS DE LOGÍSTICA (Última Viagem) --- #}
-{% if ultima_viagem %}
-    <div class="alert alert-info">
-        <h4 class="alert-heading">Logística em Andamento!</h4>
-        <p>A última viagem da sua frota ({{ ultima_viagem.veiculo.nome }}) tem conclusão prevista em <strong id="logistics-countdown" data-seconds="{{ tempo_total_restante }}">Calculando...</strong></p>
-    </div>
-{% endif %}
+    {# --- PAINEL DE STATUS DE LOGÍSTICA (Última Viagem) --- #}
+    {% if ultima_viagem %}
+        <div class="alert alert-info">
+            <h4 class="alert-heading"><i class="fas fa-shipping-fast me-1"></i> Logística em Andamento!</h4>
+            <p>A última viagem da sua frota ({{ ultima_viagem.veiculo.nome }}) tem conclusão prevista em <strong id="logistics-countdown" data-seconds="{{ tempo_total_restante }}">Calculando...</strong></p>
+        </div>
+    {% else %}
+        <div class="alert alert-success"><i class="fas fa-check-circle me-1"></i> Sua frota está livre e seus recursos estão armazenados.</div>
+    {% endif %}
 
-<div class="card mb-4 bg-light p-3">
+    {# --- STATUS E INFORMAÇÕES GERAIS DO ARMAZÉM --- #}
+    <div class="card mb-4 bg-light p-3">
+        <div class="row">
+            <div class="col-md-4">
+                <strong><i class="fas fa-map-marker-alt me-1"></i> Localização:</strong> {{ armazem.proprietario.regiao_residencia.nome }}
+            </div>
+            <div class="col-md-4">
+                <strong><i class="fas fa-weight-hanging me-1"></i> Capacidade Total:</strong> {{ peso_atual | currency_format('', separator='.') }} / {{ armazem.get_capacidade_max() | currency_format('', separator='.') }} Toneladas
+            </div>
+            <div class="col-md-4">
+                <strong><i class="fas fa-truck me-1"></i> Vagas na Frota:</strong> {{ frota|length }} / {{ armazem.get_max_frota() | currency_format('', separator='.') }} Vagas
+            </div>
+        </div>
+        <hr class="my-2">
+        <div class="row small text-center">
+            <div class="col-md-6">
+                <strong class="text-primary">Desenvolvimento:</strong><br>{{ "%.0f"|format(armazem.proprietario.regiao_residencia.indice_desenvolvimento) }} / 10
+            </div>
+            <div class="col-md-6">
+                <strong class="text-secondary">Saúde:</strong><br>{{ "%.0f"|format(armazem.proprietario.regiao_residencia.indice_saude * 10) }} / 10
+            </div>
+            <div class="col-md-6">
+                <strong class="text-info">Educação:</strong><br>{{ "%.0f"|format(armazem.proprietario.regiao_residencia.indice_educacao * 10) }} / 10
+            </div>
+            <div class="col-md-6">
+                <strong class="text-danger">Tributação:</strong><br>{{ (armazem.proprietario.regiao_residencia.taxa_imposto_geral * 100)|round(0) }}%
+            </div>
+        </div>
+    </div>
+    
+    <h2 class="mt-4"><i class="fas fa-star me-2"></i>Melhorias de Armazém</h2>
+    
     <div class="row">
-        <div class="col-md-4">
-            <strong>Localização:</strong> {{ armazem.proprietario.regiao_residencia.nome }}
-        </div>
-        <div class="col-md-4">
-            <strong>Capacidade Total:</strong> {{ peso_atual | currency_format('', separator='.') }} / {{ armazem.get_capacidade_max() | currency_format('', separator='.') }} Toneladas
-        </div>
-        <div class="col-md-4">
-            <strong>Vagas na Frota:</strong> {{ frota|length }} / {{ armazem.get_max_frota() | currency_format('', separator='.') }} Vagas
-        </div>
-    </div>
-    <hr class="my-2">
-    <div class="row small">
-        <div class="col-md-3">
-            <strong class="text-primary">Índice de Desenvolvimento:</strong><br>{{ "%.0f"|format(armazem.proprietario.regiao_residencia.indice_desenvolvimento) }} / 10
-        </div>
-        <div class="col-md-3">
-            <strong class="text-secondary">Índice de Saúde:</strong><br>{{ "%.0f"|format(armazem.proprietario.regiao_residencia.indice_saude * 10) }} / 10
-        </div>
-        <div class="col-md-3">
-            <strong class="text-info">Índice de Educação:</strong><br>{{ "%.0f"|format(armazem.proprietario.regiao_residencia.indice_educacao * 10) }} / 10
-        </div>
-        <div class="col-md-3">
-            <strong class="text-danger">Tributação na Localização:</strong><br>{{ (armazem.proprietario.regiao_residencia.taxa_imposto_geral * 100)|round(0) }}%
-        </div>
-    </div>
-</div>
+        {% for upgrade in upgrade_list %} 
+            
+            {% set info = upgrade.info %}
+            {% set current_level = upgrade.current_level %}
+            {% set type = upgrade.type %}
+            {% set display_name = upgrade.display_name %}
 
-<div class="row">
-    <h2 class="mt-4">Melhorias</h2>
-    {% for upgrade in upgrade_list %} 
-        {% set info = upgrade.info %}
-        {% set current_level = upgrade.current_level %}
-        {% set type = upgrade.type %}
-        {% set display_name = upgrade.display_name %}
+            {# Mapeamento de Cores e Ícones para Melhorias #}
+            {% set upgrade_icon = {'Capacidade': 'fas fa-cube', 'Frota': 'fas fa-truck-moving', 'Especialização': 'fas fa-wrench'} %}
+            {% set upgrade_color = {'Capacidade': 'bg-info', 'Frota': 'bg-primary', 'Especialização': 'bg-warning text-dark'} %}
 
-        {% set pode_pagar = jogador.dinheiro >= info.money and jogador.gold >= info.gold %}
-        {% set is_training_this = treino_ativo and treino_ativo.habilidade == 'armazem_' + type %}
-        {% set is_training_armazem = treino_ativo and treino_ativo.habilidade.startswith('armazem_') %}
+            {# Checagem de status #}
+            {% set pode_pagar = jogador.dinheiro >= info.money and jogador.gold >= info.gold %}
+            {% set is_training_this = treino_ativo and treino_ativo.habilidade == 'armazem_' + type %}
+            {% set is_training_armazem = treino_ativo and treino_ativo.habilidade.startswith('armazem_') %}
 
-        <div class="col-md-4 mb-4">
-            <div class="card h-100">
-                <div class="card-header bg-primary text-white">{{ display_name }} - Nível {{ current_level }}</div>
-                <div class="card-body small">
-                    
-                    {% if treino_em_andamento %}
-                        {% if is_training_this %}
-                            <div class="alert alert-info text-center" 
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-header {{ upgrade_color[display_name] }}">
+                        <i class="{{ upgrade_icon[display_name] }} me-2"></i> {{ display_name }} - Nível {{ current_level }}
+                    </div>
+                    <div class="card-body small">
+                        
+                        {# --- STATUS DE TREINO --- #}
+                        {% if treino_em_andamento %}
+                            
+                            {% if is_training_this %}
+                                <div class="alert alert-info text-center" 
                                     id="armazem-countdown-{{ type }}" 
                                     data-seconds="{{ tempo_restante_armazem }}">
-                                Treinando...
-                            </div>
-                            <p class="text-center small">Conclusão: {{ treino_ativo.data_fim | datetime_local }}</p>
-                        {% elif is_training_armazem %}
-                            <div class="alert alert-danger py-1 small">Outra melhoria de Armazém em andamento.</div>
-                        {% else %}
-                            <div class="alert alert-warning py-1 small">Treino de Habilidade do Jogador ativo.</div>
-                        {% endif %}                            
-                    {% endif %}
-                    
-                    {# --- MOSTRAR BOTÃO DE TREINAR --- #}
-                    {% if not is_training_armazem %}
-                        <p class="mb-1"><strong>Melhoria:</strong> Nível {{ "%.0f"|format(current_level + 1) }}</p>
-                        <p class="mb-1"><strong>Efeito:</strong> {{ info.effect }}</p>
-                        <p class="mb-1"><strong>Tempo:</strong> {{ info.time }} minutos</p>
-                        <p class="mb-1"><strong>Dinheiro:</strong> {{ info.money | currency_format('R$', '.') }}
-                                {% if jogador.dinheiro >= info.money %}✅{% else %}❌{% endif %}</p>
-                        <p class="mb-1"><strong>Gold:</strong> {{ "%.2f"|format(info.gold) }} Kg
-                                {% if jogador.gold >= info.gold %}✅{% else %}❌{% endif %}</p>
-                        <hr class="my-1">
-                        <form method="POST" action="{{ url_for('warehouse.start_upgrade', type=type) }}">
-                            <button type="submit" 
-                                    class="btn btn-sm btn-success mt-2" 
-                                    {% if not pode_pagar %}disabled{% endif %}>
-                                Iniciar Melhoria
-                            </button>
-                        </form>
-                    {% endif %}
+                                    <i class="fas fa-clock me-1"></i> Treinando...
+                                </div>
+                                <p class="text-center small">Conclusão: {{ treino_ativo.data_fim | datetime_local }}</p>
+                            {% elif is_training_armazem %}
+                                <div class="alert alert-danger py-1 small"><i class="fas fa-times-circle me-1"></i> Outra melhoria de Armazém em andamento.</div>
+                            {% else %}
+                                <div class="alert alert-warning py-1 small"><i class="fas fa-user-tie me-1"></i> Treino de Habilidade do Jogador ativo.</div>
+                            {% endif %}
+                            
+                        {% endif %}
+                        
+                        {# --- MOSTRAR BOTÃO DE TREINAR --- #}
+                        {# O botão só aparece se não houver treino de Armazém ativo. #}
+                        {% if not is_training_armazem %}
+                            <p class="mb-1"><strong>Melhoria:</strong> Nível {{ "%.0f"|format(current_level + 1) }}</p>
+                            <p class="mb-1"><strong>Efeito:</strong> {{ info.effect }}</p>
+                            <p class="mb-1"><strong><i class="fas fa-coins me-1"></i> Dinheiro:</strong> {{ info.money | currency_format('R$', '.') }}
+                                    {% if jogador.dinheiro >= info.money %}✅{% else %}❌{% endif %}</p>
+                            <p class="mb-1"><strong><i class="fas fa-dice-d20 me-1"></i> Gold:</strong> {{ "%.2f"|format(info.gold) }} Kg
+                                    {% if jogador.gold >= info.gold %}✅{% else %}❌{% endif %}</p>
+                            <p class="mb-1"><strong><i class="fas fa-clock me-1"></i> Tempo:</strong> {{ info.time }} minutos</p>
+                            <hr class="my-1">
+                            <form method="POST" action="{{ url_for('warehouse.start_upgrade', type=type) }}">
+                                <button type="submit" 
+                                        class="btn btn-sm btn-success mt-2 w-100" 
+                                        {% if not pode_pagar %}disabled{% endif %}>
+                                    <i class="fas fa-level-up-alt me-1"></i> Iniciar Melhoria
+                                </button>
+                            </form>
+                        {% endif %}
+
+                    </div>
                 </div>
             </div>
-        </div>
-    {% endfor %}
-</div>
+        {% endfor %}
+    </div>
 
-<div class="row">
-    <div class="col-md-8">
-    <h2 class="mt-4">Recursos Armazenados</h2>
-        {% if recursos_para_coleta %}
-        <div class="card mb-4 border-warning">
-            <div class="card-header bg-warning text-dark">
-                <strong>Recursos em Espera para Coleta</strong>
-            </div>
-            
-            <ul class="list-group list-group-flush">
-                {% for recurso in recursos_para_coleta %}
-                <li class="list-group-item">
-                    
-                    <form method="POST" action="{{ url_for('game_actions.start_transport') }}">
-                        <input type="hidden" name="regiao_id" value="{{ recurso.regiao_id }}">
-                        <input type="hidden" name="tipo_recurso" value="{{ recurso.tipo_recurso }}">
+    <div class="row">
 
-                        <div class="row">
-                            <div class="col-md-4 col-12">
-                                <strong>Recurso:</strong> {{ recurso.tipo_recurso | capitalize }}
-                            </div>
-                            <div class="col-md-4 col-12">
-                                <strong>Local:</strong> {{ recurso.regiao_nome }}
-                            </div>
-                            <div class="col-md-4 col-12">
-                                <strong>Qtd:</strong> {{ recurso.quantidade_total }} ton/Kg
-                            </div>
-                        </div>
-
-                        <div class="row mt-2">
-                            <div class="col-12 small {% if recurso.tempo_restante_exp < 3600 %}text-danger{% endif %}">
-                                <strong>Prazo:</strong> <span data-seconds="{{ recurso.tempo_restante_exp }}">Calculando...</span>
-                            </div>
-                        </div>
-
-                        <div class="row mt-3 align-items-end">
-                            <div class="col-md-8 col-12">
-                                <label class="form-label small"><strong>Veículos Livres ({{ veiculos_disponiveis | length }})</strong></label>
+        <div class="col-md-4">
+            <h2 class="mt-4"><i class="fas fa-truck-loading me-2"></i>Frota de Transporte</h2>
+            {% if frota %}
+                {% for veiculo in frota %}
+                    {% set viagens_pendentes = veiculo.transporte_atual | length %}
+                    {% set recurso_em_transito_veiculo = veiculo.transporte_atual | sum(attribute='quantidade') %}
+                    <div class="card mb-2 small {% if viagens_pendentes > 0 %}border-danger{% else %}border-success{% endif %}">
+                        <div class="card-body py-2">
+                            <strong><i class="fas fa-truck me-1"></i> {{ veiculo.nome }}</strong>
+                            <ul class="list-unstyled mb-0 mt-1">
+                                <li><i class="fas fa-weight-hanging me-1"></i> Capacidade: {{ veiculo.capacidade | int }} ton | <i class="fas fa-tachometer-alt me-1"></i> Velocidade: {{ (veiculo.velocidade * 100) | int }}%</li>
+                                <li><i class="fas fa-money-bill-alt me-1"></i> Frete: R$ {{ veiculo.custo_tonelada_km | int }}/t-km | <i class="fas fa-calendar-alt me-1"></i> Duração: {{ veiculo.validade_dias }} dias</li>
                                 
-                                {% if not veiculos_disponiveis %}
-                                    <span class="d-block small text-danger">Nenhum veículo disponível.</span>
+                                {% if viagens_pendentes > 0 %}
+                                <li class="text-danger"><i class="fas fa-exclamation-circle me-1"></i> Status: Trabalhando... ({{ viagens_pendentes }} viagens pendentes)</li>
+                                <li class="text-danger"><i class="fas fa-exchange-alt me-1"></i> Em Trânsito: {{ recurso_em_transito_veiculo | int }} Toneladas</li>
                                 {% else %}
-                                    {% for veiculo in veiculos_disponiveis %}
-                                        {% set viagens_necessarias = (recurso.quantidade_total / veiculo.capacidade) | round(0, 'ceil') | int %}
-                                        <div class->
-                                            <label for="viagens_{{ veiculo.id }}_{{ recurso.regiao_id }}_{{ recurso.tipo_recurso }}" class="small">{{ veiculo.nome }} ({{ veiculo.capacidade | int }}t)</label>
-                                            <input type="number" 
-                                                    name="viagens_{{ veiculo.id }}" 
-                                                    id="viagens_{{ veiculo.id }}_{{ recurso.regiao_id }}_{{ recurso.tipo_recurso }}"
-                                                    min="0" 
-                                                    max="{{ viagens_necessarias }}" 
-                                                    value="0" 
-                                                    class="form-control form-control-sm d-inline-block"
-                                                    style="width: 80px;">
-                                        </div>
-                                    {% endfor %}
+                                <li class="text-success"><i class="fas fa-check-circle me-1"></i> Status: Disponível</li>
                                 {% endif %}
-                            </div>
-                            <div class="col-md-4 col-12 mt-2 mt-md-0">
-                                <button type="submit" 
-                                        class="btn btn-primary btn-sm w-100"
-                                        {% if not veiculos_disponiveis %}disabled{% endif %}>
-                                    Iniciar Transporte
-                                </button>
-                            </div>
+                            </ul>
                         </div>
-                    </form>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="alert alert-warning small">Nenhum veículo na frota. Compre um na Concessionária!</div>
+            {% endif %}
+        </div>
+
+        <div class="col-md-8">
+            <h2 class="mt-4"><i class="fas fa-box me-2"></i>Recursos Armazenados</h2>
+            <ul class="list-group mb-4">
+                {% for recurso in recursos_armazem %}
+                {# Adicionando ícones para Gold e Ferro #}
+                {% set icon = 'fas fa-leaf' if recurso.tipo == 'milho' else 'fas fa-hammer' %}
+                {% set unit = 'Toneladas' %}
+
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <strong><i class="{{ icon }} me-1"></i> {{ recurso.tipo | capitalize }}:</strong>
+                    <span>{{ "%.0f"|format(recurso.quantidade) }} {{ unit }}</span>
                 </li>
+                {% else %}
+                <li class="list-group-item">Nenhum recurso armazenado.</li>
                 {% endfor %}
             </ul>
-        </div>
-        {% endif %}
-        <ul class="list-group mb-4">
-            {% for recurso in recursos_armazem %}
-            <li class="list-group-item d-flex justify-content-between">
-                <strong>{{ recurso.tipo | capitalize }}:</strong>
-                <span>{{ "%.0f"|format(recurso.quantidade) }} Toneladas</span>
-            </li>
-            {% else %}
-            <li class="list-group-item">Nenhum recurso armazenado.</li>
-            {% endfor %}
-        </ul>
 
+            {# --- RECURSOS NA MINA --- #}
+            <h2 class="mt-4"><i class="fas fa-box-open me-2"></i>Aguardando Frete</h2>
+            {% if recursos_para_coleta %}
+            <div class="row">
+                {% for recurso in recursos_para_coleta %}
+                
+                {# --- LÓGICA DE ÍCONE PARA RECURSOS NA MINA --- #}
+                {% set icon = 'fas fa-dice-d20' if recurso.tipo_recurso == 'gold' %}
+                {% set icon = 'fas fa-hammer' if recurso.tipo_recurso == 'ferro' %}
+                {% set icon = 'fas fa-leaf' if recurso.tipo_recurso == 'milho' %}
+                
+                {% set icon_color = 'text-warning' if recurso.tipo_recurso == 'gold' %}
+                {% set icon_color = 'texto-ferro' if recurso.tipo_recurso == 'ferro' %}
+                {% set icon_color = 'text-success' if recurso.tipo_recurso == 'milho' %}
+                
+                <div class="col-md-12 mb-4">
+                    <div class="card border-warning h-100">
+                        <div class="card-header bg-warning text-dark py-2">
+                            <i class="fas fa-exclamation-triangle me-1"></i> 
+                            <strong class="{{ icon_color }}"><i class="{{ icon }} me-1"></i> {{ recurso.tipo_recurso | capitalize }}</strong> em {{ recurso.regiao_nome }}
+                            <span class="float-end small">Prazo: <strong data-seconds="{{ recurso.tempo_restante_exp }}">...</strong></span>
+                        </div>
+                        
+                        <div class="card-body small">
+                            <p class="mb-3"><strong>Quantidade Total Pendente:</strong> {{ recurso.quantidade_total | currency_format('', separator='.') }} ton</p>
+
+                            {% if not veiculos_disponiveis %}
+                                <div class="alert alert-danger py-1 small">Nenhum veículo disponível para agendar o transporte.</div>
+                            {% else %}
+                                <form method="POST" action="{{ url_for('game_actions.start_transport') }}" class="mt-3">
+                                    <input type="hidden" name="regiao_id" value="{{ recurso.regiao_id }}">
+                                    <input type="hidden" name="tipo_recurso" value="{{ recurso.tipo_recurso }}">
+
+                                    <table class="table table-sm table-striped small table-dark">
+                                        <thead>
+                                            <tr>
+                                                <th>Veículo</th>
+                                                <th>Capacidade</th>
+                                                <th>Viagens (Máx.)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                        {% for veiculo in veiculos_disponiveis %}
+                                            {% set viagens_necessarias = (recurso.quantidade_total / veiculo.capacidade) | round(0, 'ceil') | int %}
+                                            <tr>
+                                                <td><i class="fas fa-truck me-1"></i> {{ veiculo.nome }}</td>
+                                                <td>{{ veiculo.capacidade | int }} t</td>
+                                                <td>
+                                                    <input type="number" 
+                                                            name="viagens_{{ veiculo.id }}" 
+                                                            min="0" 
+                                                            max="{{ viagens_necessarias }}" 
+                                                            value="0" 
+                                                            class="form-control form-control-sm"
+                                                            style="width: 80px;">
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                        </tbody>
+                                    </table>
+                                    
+                                    <button type="submit" 
+                                            class="btn btn-primary btn-sm w-100 mt-2">
+                                        <i class="fas fa-route me-1"></i> Iniciar Transporte Planejado
+                                    </button>
+                                </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="alert alert-info mt-4">Não há recursos esperando por frete.</div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="row">
         <div class="col-md-12">
-            <h2 class="mt-4">Concessionária</h2>
+            <h2 class="mt-4"><i class="fas fa-car me-2"></i>Concessionária</h2>
 
             {% set modelos = modelos_veiculos %}
-            <ul class="list-group">
+            <div class="row">
                 {% for modelo in modelos %}
                     {% set ferro = armazem.recursos.filter_by(tipo='ferro').first() %}
                     {% set ferro_qtd = ferro.quantidade if ferro else 0 %}
@@ -202,85 +264,49 @@
                         frota | length < armazem.get_max_frota()
                     ) %}
                     
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        
-                        {# --- DETALHES DE EXIBIÇÃO DO VEÍCULO --- #}
-                        <div>
-                            <strong>{{ modelo.nome_display }} ({{ modelo.capacidade | int }}ton)</strong>
-                            <hr class="my-2">
-                            <p class="small mb-0">
-                                Especialização:
-                                <strong>Nível {{ modelo.nivel_especializacao_req }}</strong>
-                                (Seu: {{ armazem.nivel_especializacao }})
-                                {% if armazem.nivel_especializacao >= modelo.nivel_especializacao_req %}✅{% else %}❌{% endif %}
-                            </p>
-                            <p class="small mb-0">
-                                Dinheiro:
-                                <strong>{{ modelo.custo_money | currency_format('R$', '.') }}</strong>
-                                {% if jogador.dinheiro >= modelo.custo_money %}✅{% else %}❌{% endif %}
-                            </p>
-                            <p class="small mb-0">
-                                Gold: 
-                                <strong>{{ "%.2f"|format(modelo.custo_gold) }} Kg</strong>
-                                {% if jogador.gold >= modelo.custo_gold %}✅{% else %}❌{% endif %}
-                            </p>
-                            <p class="small mb-0">
-                                Ferro: 
-                                <strong>{{ modelo.custo_ferro | currency_format('', separator='.') }} ton</strong>
-                                (Seu: {{ ferro_qtd | int }} ton)
-                                {% if ferro_qtd >= modelo.custo_ferro %}✅{% else %}❌{% endif %}
-                            </p>
-                            <p class="small mb-0">
-                                Vaga na Frota:
-                                <strong>1 Vaga</strong>
-                                (Seu: {{ frota|length }} / {{ armazem.get_max_frota() }})
-                                {% if frota|length < armazem.get_max_frota() %}✅{% else %}❌{% endif %}
-                            </p>
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <strong><i class="fas fa-truck me-1"></i> {{ modelo.nome_display }}</strong>
+                            </div>
+                            <div class="card-body small">
+                                
+                                <p class="mb-1">
+                                    <i class="fas fa-warehouse me-1"></i> <strong>Especialização Requerida:</strong> Nv. {{ modelo.nivel_especializacao_req }} (Seu: {{ armazem.nivel_especializacao }}) 
+                                    {% if armazem.nivel_especializacao >= modelo.nivel_especializacao_req %}✅{% else %}<span class="text-danger">❌</span>{% endif %}
+                                </p>
+                                <p class="mb-1">
+                                    <i class="fas fa-weight-hanging me-1"></i> Capacidade: {{ modelo.capacidade | int }} ton | <i class="fas fa-calendar-alt me-1"></i> Validade: {{ modelo.validade_dias }} dias
+                                </p>
+                                <hr class="my-2">
+                                <p class="mb-1">
+                                    <i class="fas fa-coins me-1"></i> <strong>Custo Dinheiro:</strong> {{ modelo.custo_money | currency_format('R$', '.') }}
+                                    {% if jogador.dinheiro >= modelo.custo_money %}✅{% else %}<span class="text-danger">❌</span>{% endif %}
+                                </p>
+                                <p class="mb-1">
+                                    <i class="fas fa-dice-d20 me-1"></i> <strong>Custo Gold:</strong> {{ "%.2f"|format(modelo.custo_gold) }} Kg
+                                    {% if jogador.gold >= modelo.custo_gold %}✅{% else %}<span class="text-danger">❌</span>{% endif %}
+                                </p>
+                                <p class="mb-1">
+                                    <i class="fas fa-hammer me-1 texto-ferro"></i> <strong>Custo Ferro:</strong> {{ modelo.custo_ferro | currency_format('', separator='.') }} ton (Seu: {{ ferro_qtd | int }} ton)
+                                    {% if ferro_qtd >= modelo.custo_ferro %}✅{% else %}<span class="text-danger">❌</span>{% endif %}
+                                </p>
+                                <p class="mb-1">
+                                    <i class="fas fa-truck me-1"></i> <strong>Vaga na Frota:</strong> ({{ frota|length }}/{{ armazem.get_max_frota() }})
+                                    {% if frota|length < armazem.get_max_frota() %}✅{% else %}<span class="text-danger">❌</span>{% endif %}
+                                </p>
+
+                                <hr class="my-2">
+                                <form method="POST" action="{{ url_for('warehouse.buy_vehicle', tipo_veiculo=modelo.tipo_veiculo) }}">
+                                    <button type="submit" class="btn btn-sm {% if pode_comprar %}btn-success{% else %}btn-secondary{% endif %} w-100" {% if not pode_comprar %}disabled{% endif %}>
+                                        <i class="fas fa-cart-plus me-1"></i> Comprar Veículo
+                                    </button>
+                                </form>
+                            </div>
                         </div>
-                        {# --- FIM DETALHES DE EXIBIÇÃO --- #}
-                        
-                        <form method="POST" action="{{ url_for('warehouse.buy_vehicle', tipo_veiculo=modelo.tipo_veiculo) }}">
-                            <button type="submit" class="btn btn-sm {% if pode_comprar %}btn-success{% else %}btn-secondary{% endif %}" {% if not pode_comprar %}disabled{% endif %}>
-                                Comprar
-                            </button>
-                        </form>
-                    </li>
+                    </div>
                 {% endfor %}
-            </ul>
+            </div>
         </div>
     </div>
-
-    <div class="col-md-4">
-        <h2 class="mt-4">Frota de Transporte</h2>
-        {% if frota %}
-            {% for veiculo in frota %}
-                {% set viagens_pendentes = veiculo.transporte_atual | length %}
-                {% set recurso_em_transito_veiculo = veiculo.transporte_atual | sum(attribute='quantidade') %}
-                <div class="card mb-2 small border-info">
-                    <div class="card-body py-2">
-                        <strong>{{ veiculo.nome }}</strong>
-                        <ul class="list-unstyled mb-0 mt-1">
-                            <li>Capacidade: {{ veiculo.capacidade | int }} ton | Velocidade média: {{ (veiculo.velocidade * 100) | int }} Km/h</li>
-                            <li>Frete: R$ {{ veiculo.custo_tonelada_km | int }}/ton-km | Duração: {{ veiculo.validade_dias }} dias</li>
-                            {% if viagens_pendentes > 0 %}
-                            <li>Status: 
-                                <span class="text-danger">Trabalhando... ({{ viagens_pendentes }} viagens pendentes)</span>
-                            </li>
-                            <li>Recursos em Trânsito: 
-                                <span class="text-danger">{{ recurso_em_transito_veiculo | int }} Toneladas</span>
-                            </li>
-                            {% else %}
-                            <li>Status: 
-                                <span class="text-success">Disponível</span>
-                            </li>
-                            {% endif %}
-                        </ul>
-                    </div>
-                </div>
-            {% endfor %}
-        {% else %}
-            <div class="alert alert-warning small">Nenhum veículo na frota.</div>
-        {% endif %}
-    </div>
-</div>
 {% endblock %}

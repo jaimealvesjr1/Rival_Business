@@ -1,21 +1,21 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <h1 class="mt-4">Painel de Gestão</h1>
+    <h1 class="mt-4"><i class="fas fa-cogs me-2"></i>Painel de Gestão</h1>
     <p class="lead">Gerenciar dados e itens do jogo.</p>
 
     <ul class="nav nav-tabs" id="manageTabs" role="tablist">
         <li class="nav-item">
-            <a class="nav-link active" id="jogadores-tab" data-bs-toggle="tab" href="#jogadores" role="tab">Jogadores ({{ jogadores|length }})</a>
+            <a class="nav-link active" id="jogadores-tab" data-bs-toggle="tab" href="#jogadores" role="tab"><i class="fas fa-users me-1"></i>Jogadores ({{ jogadores|length }})</a>
         </li>
         <li class="nav-item">
-            <a class="nav-link" id="regioes-tab" data-bs-toggle="tab" href="#regioes" role="tab">Regiões ({{ regioes|length }})</a>
+            <a class="nav-link" id="regioes-tab" data-bs-toggle="tab" href="#regioes" role="tab"><i class="fas fa-globe me-1"></i>Regiões ({{ regioes|length }})</a>
         </li>
         <li class="nav-item">
-            <a class="nav-link" id="empresas-tab" data-bs-toggle="tab" href="#empresas" role="tab">Empresas ({{ empresas|length }})</a>
+            <a class="nav-link" id="empresas-tab" data-bs-toggle="tab" href="#empresas" role="tab"><i class="fas fa-building me-1"></i>Empresas ({{ empresas|length }})</a>
         </li>
         <li class="nav-item">
-            <a class="nav-link" id="tipos-veiculos-tab" data-bs-toggle="tab" href="#tipos-veiculos" role="tab">Modelos de Veículo ({{ tipos_veiculos|length }})</a>
+            <a class="nav-link" id="tipos-veiculos-tab" data-bs-toggle="tab" href="#tipos-veiculos" role="tab"><i class="fas fa-truck me-1"></i>Modelos de Veículo ({{ tipos_veiculos|length }})</a>
         </li>
     </ul>
 
@@ -25,7 +25,7 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2 class="mb-3 mt-4">Lista de Jogadores</h2>
             <div class="btn-group">
-                <a href="{{ url_for('manage.create_player') }}" class="btn btn-primary mb-3">Novo Jogador</a>
+                <a href="{{ url_for('manage.create_player') }}" class="btn btn-primary mb-3"><i class="fas fa-plus me-1"></i> Novo Jogador</a>
             </div>
         </div>
         <div class="table-responsive">

@@ -115,12 +115,12 @@ def create_player():
     form = PlayerForm()
     
     if form.validate_on_submit():
-        regiao_destino = Regiao.query.get(form.regiao_id.data)
-        if not regiao_destino:
-            flash("Localização inicial inválida.", 'danger')
-            return redirect(url_for('manage.create_player'))
-
         try:
+            regiao_destino = Regiao.query.get(form.regiao_id.data)
+            if not regiao_destino:
+                flash("Localização inicial inválida.", 'danger')
+                return redirect(url_for('manage.create_player'))
+
             novo_jogador = Jogador(
                 username=form.username.data,
                 is_admin=form.is_admin.data,
@@ -131,6 +131,29 @@ def create_player():
             novo_jogador.set_password(form.password.data)
             
             db.session.add(novo_jogador)
+            db.session.flush()
+
+            from app.models import Armazem, Veiculo, TipoVeiculo
+
+            armazem = Armazem(jogador_id=novo_jogador.id, regiao_id=regiao_destino.id)
+            db.session.add(armazem)
+            db.session.flush()
+
+            rodotrem_tipo = TipoVeiculo.query.filter_by(tipo_veiculo='rodotrem').first()
+            
+            if rodotrem_tipo:
+                veiculo_inicial = Veiculo(
+                    armazem_id=armazem.id,
+                    nome=rodotrem_tipo.nome_display,
+                    tipo_veiculo=rodotrem_tipo.tipo_veiculo,
+                    capacidade=rodotrem_tipo.capacidade,
+                    velocidade=rodotrem_tipo.velocidade,
+                    custo_tonelada_km=rodotrem_tipo.custo_tonelada_km,
+                    validade_dias=rodotrem_tipo.validade_dias,
+                    nivel_especializacao_req=rodotrem_tipo.nivel_especializacao_req
+                )
+                db.session.add(veiculo_inicial)
+
             db.session.commit()
             
             flash(f'Jogador "{novo_jogador.username}" criado com sucesso! Admin: {novo_jogador.is_admin}', 'success')

@@ -1,18 +1,17 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <div class="p-5 mb-4 bg-light rounded-3 text-center">
-        <h1 class="display-4">Bem-vindo ao Rival Business!</h1>
-    <p class="lead">Negocie Ouro e Ferro diretamente com outros jogadores.</p>
-        <p class="lead">Desenvolva seu império, controle o mercado e domine o mundo.</p>
+    <div class="p-5 mb-4 bg-light rounded-3 text-center card mt-4">
+        <h1 class="display-4 text-rivalbusiness">Bem-vindo ao Rival Business!</h1>
+        <p class="lead">A sua jornada para construir um império e dominar o mercado global começa aqui.</p>
         <hr class="my-4">
-        <p>Faça login ou registre-se para começar sua jornada.</p>
+        <p>Faça login ou registre-se para começar a negociar Ouro e Ferro.</p>
         <p class="lead">
-            <a class="btn btn-primary btn-lg mt-4 me-1" href="{{ url_for('auth.register') }}" role="button">
-                Quero me Registrar!
+            <a class="btn btn-rivalbusiness btn-lg mt-4 me-1" href="{{ url_for('auth.register') }}" role="button">
+                <i class="fas fa-user-plus me-1"></i> Quero me Registrar!
             </a>
             <a class="btn btn-secondary btn-lg mt-4" href="{{ url_for('auth.login') }}" role="button">
-                Já sou Jogador!
+                <i class="fas fa-sign-in-alt me-1"></i> Já sou Jogador!
             </a>
         </p>
     </div>
