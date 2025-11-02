@@ -10,6 +10,7 @@
         Dinheiro: <strong>{{ dinheiro_disponivel | currency_format('R$') }}</strong> |
         <i class="fas fa-dice-d20 me-1 text-warning"></i> Gold: <strong>{{ recursos_armazem['gold'] | default(0.0) | int }} Kg</strong> |
         <i class="fas fa-hammer me-1 texto-ferro"></i> Ferro: <strong>{{ recursos_armazem['ferro'] | default(0.0) | int }} ton</strong>
+        <i class="fas fa-leaf me-1 text-danger"></i> Milho: <strong>{{ recursos_armazem['milho'] | default(0.0) | int }} ton</strong>
         <br>
         <small class="d-block mt-1">Recursos e dinheiro em ordens ativas ficam bloqueados e não aparecem aqui.</small>
     </div>
@@ -63,7 +64,7 @@
                         <div class="row align-items-center">
                             <div class="col-lg-3 col-md-4 col-12">
                                 <strong class="text-success"><i class="fas fa-user-tag me-1"></i> VENDEDOR:</strong> {{ order.jogador.username }}<br>
-                                <small><i class="{{ resource_icon }} me-1"></i> {{ order.resource_type | capitalize }}</small>
+                                <small><i class="{{ resource_icon }} me-1"></i> {{ order.resource_type | capitalize }} ({{ order.resource_type | resource_unit }})</small>
                             </div>
                             <div class="col-lg-3 col-md-4 col-6">
                                 <strong><i class="fas fa-tag me-1"></i> Preço/Unidade:</strong> {{ order.price_per_unit | currency_format('R$') }}<br>
@@ -94,7 +95,7 @@
                         <div class="row align-items-center">
                             <div class="col-lg-3 col-md-4 col-12">
                                 <strong class="text-warning"><i class="fas fa-search-dollar me-1"></i> COMPRADOR:</strong> {{ order.jogador.username }}<br>
-                                <small><i class="{{ resource_icon }} me-1"></i> {{ order.resource_type | capitalize }}</small>
+                                <small><i class="{{ resource_icon }} me-1"></i> {{ order.resource_type | capitalize }} ({{ order.resource_type | resource_unit }})</small>
                             </div>
                             <div class="col-lg-3 col-md-4 col-6">
                                 <strong><i class="fas fa-tag me-1"></i> Preço/Unidade:</strong> {{ order.price_per_unit | currency_format('R$') }}<br>
@@ -130,7 +131,7 @@
                             {% set resource_icon = 'fas fa-dice-d20 text-warning' if order.resource_type == 'gold' else 'fas fa-hammer texto-ferro' %}
                             {% endif %}
                             <br>
-                            <small><i class="{{ resource_icon }} me-1"></i> {{ order.resource_type | capitalize }}</small>
+                            <small><i class="{{ resource_icon }} me-1"></i> {{ order.resource_type | capitalize }} ({{ order.resource_type | resource_unit }})</small>
                         </div>
                         <div class="col-md-4 col-6">
                             <strong>Preço:</strong> {{ order.price_per_unit | currency_format('R$') }}<br>

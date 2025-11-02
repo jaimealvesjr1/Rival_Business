@@ -10,6 +10,7 @@ class MarketOrderForm(FlaskForm):
     resource_type = SelectField('Recurso', choices=[
         ('gold', 'Gold (Kg)'),
         ('ferro', 'Ferro (ton)'),
+        ('milho', 'Milho (ton)'),
     ], validators=[DataRequired()])
 
     quantity = FloatField('Quantidade', validators=[

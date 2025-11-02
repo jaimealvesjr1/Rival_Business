@@ -11,15 +11,6 @@
     <h1 class="mt-4"><i class="fas fa-warehouse me-2"></i>Armazém de {{ jogador.username }}</h1>
     <p class="lead">Cuide de seus recursos e logística.</p>
 
-    {# --- PAINEL DE STATUS DE LOGÍSTICA (Última Viagem) --- #}
-    {% if ultima_viagem %}
-        <div class="alert alert-info">
-            <h4 class="alert-heading"><i class="fas fa-shipping-fast me-1"></i> Logística em Andamento!</h4>
-            <p>A última viagem da sua frota ({{ ultima_viagem.veiculo.nome }}) tem conclusão prevista em <strong id="logistics-countdown" data-seconds="{{ tempo_total_restante }}">Calculando...</strong></p>
-        </div>
-    {% else %}
-    {% endif %}
-
     {# --- STATUS E INFORMAÇÕES GERAIS DO ARMAZÉM --- #}
     <div class="card mb-4 bg-light p-3">
         <div class="row small">
@@ -146,7 +137,7 @@
                                 {# --- NOVO: PRÓXIMA CONCLUSÃO DE VIAGEM --- #}
                                 {% if first_trip %}
                                     {% set remaining_sec = (first_trip.data_fim - utcnow).total_seconds() | int %}
-                                    <li class="small text-muted"><i class="fas fa-clock me-1"></i> Próx. Conclusão: <span data-seconds="{{ remaining_sec }}">...</span></li>
+                                    <li class="small text-muted"><i class="fas fa-clock me-1"></i> <span data-seconds="{{ remaining_sec }}">...</span></li>
                                 {% endif %}
                                 
 
@@ -170,6 +161,10 @@
                 {% set icon = 'fas fa-leaf' if recurso.tipo == 'milho' else 'fas fa-hammer' %}
                 {% set unit = 'Toneladas' %}
 
+                {% set icon_color = 'texto-ferro' if recurso.tipo == 'ferro' %}
+                {% set icon_color = 'text-success' if recurso.tipo == 'milho' %}
+
+
                 <li class="list-group-item d-flex justify-content-between align-items-center">
                     <strong><i class="{{ icon }} me-1"></i> {{ recurso.tipo | capitalize }}:</strong>
                     <span>{{ "%.0f"|format(recurso.quantidade) }} {{ unit }}</span>
@@ -186,11 +181,8 @@
                 {% for recurso in recursos_para_coleta %}
                 
                 {# --- LÓGICA DE ÍCONE PARA RECURSOS NA MINA --- #}
-                {% set icon = 'fas fa-dice-d20' if recurso.tipo_recurso == 'gold' %}
-                {% set icon = 'fas fa-hammer' if recurso.tipo_recurso == 'ferro' %}
-                {% set icon = 'fas fa-leaf' if recurso.tipo_recurso == 'milho' %}
+                {% set icon = 'fas fa-leaf' if recurso.tipo == 'milho' else 'fas fa-hammer' %}
                 
-                {% set icon_color = 'text-warning' if recurso.tipo_recurso == 'gold' %}
                 {% set icon_color = 'texto-ferro' if recurso.tipo_recurso == 'ferro' %}
                 {% set icon_color = 'text-success' if recurso.tipo_recurso == 'milho' %}
                 
@@ -212,7 +204,7 @@
                                     <input type="hidden" name="regiao_id" value="{{ recurso.regiao_id }}">
                                     <input type="hidden" name="tipo_recurso" value="{{ recurso.tipo_recurso }}">
 
-                                    <table class="table table-sm table-striped small table-dark">
+                                    <table class="table table-sm table-striped small">
                                         <thead>
                                             <tr>
                                                 <th>Veículo</th>

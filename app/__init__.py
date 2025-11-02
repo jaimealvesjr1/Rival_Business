@@ -98,6 +98,13 @@ def create_app(config_class=Config):
     def inject_utcnow():
         """Injeta a variável 'utcnow' globalmente nos templates."""
         return {'utcnow': datetime.utcnow()}
+    
+    @app.template_filter('resource_unit')
+    def resource_unit_filter(resource_type):
+        """Retorna a unidade correta (Kg ou ton) para um recurso."""
+        if resource_type == 'gold':
+            return 'Kg'
+        return 'ton'
 
     @app.template_filter('action_format')
     def action_format_filter(action_code):

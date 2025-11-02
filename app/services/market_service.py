@@ -82,18 +82,21 @@ def create_buy_order(creator_jogador: Jogador, resource_type: str, quantity: flo
     """
     if quantity <= 0 or price_per_unit <= 0:
         return (False, "Valores inválidos.")
-        
-    total_cost = quantity * price_per_unit
+
+    total_cost = quantity * price_per_unit 
+    order_regiao = db.session.get(Regiao, creator_jogador.regiao_atual_id)
+    imposto_devido = _calculate_tax(creator_jogador, order_regiao, total_cost)
+    custo_total_com_imposto = total_cost + imposto_devido
     
     # 1. Verificar se tem dinheiro disponível (não reservado)
     available_money = creator_jogador.dinheiro - creator_jogador.dinheiro_reservado
     
-    if available_money < total_cost:
-        return (False, f"Dinheiro insuficiente. Você precisa de R$ {total_cost:,.2f} e tem R$ {available_money:,.2f} disponíveis.")
+    if available_money < custo_total_com_imposto:
+        return (False, f"Dinheiro insuficiente. Você precisa de R$ {custo_total_com_imposto:,.2f} (R$ {total_cost:,.2f} + R$ {imposto_devido:,.2f} de imposto) e tem R$ {available_money:,.2f} disponíveis.")
         
     try:
         # 2. Trancar (Escrow) o dinheiro
-        creator_jogador.dinheiro_reservado += total_cost
+        creator_jogador.dinheiro_reservado += custo_total_com_imposto
         
         # 3. Criar a Ordem
         duration_hours = current_app.config['MARKET_ORDER_DURATION_HOURS']
@@ -187,7 +190,7 @@ def fill_order(taker_jogador: Jogador, order_id: int, quantity_to_fill: float):
                 regiao_id=order.regiao_id,
                 tipo_recurso=order.resource_type,
                 quantidade=quantity_to_fill,
-                data_expiracao = datetime.utcnow() + timedelta(minutes=current_app.config['TEMPO_LIMITE_PLANEJAMENTO_MIN'])
+                data_expiracao = datetime.utcnow() + timedelta(minutes=current_app.config['RECURSO_NA_MINA_EXPIRACAO_MIN'])
             )
             db.session.add(recurso_na_mina)
             
@@ -218,21 +221,12 @@ def fill_order(taker_jogador: Jogador, order_id: int, quantity_to_fill: float):
 
             # 2. Calcular Imposto (Pago pelo Creator/Comprador)
             imposto_devido = _calculate_tax(creator_jogador, order_regiao, total_value)
-            
-            # 3. Verificar se o Creator (Comprador) tem dinheiro para o IMPOSTO
-            # (O 'total_value' já está em escrow)
-            if creator_jogador.dinheiro < imposto_devido:
-                # O Criador da ordem não pode pagar o imposto. Cancelamos a ordem para ele.
-                order.status = 'CANCELLED'
-                creator_jogador.dinheiro_reservado -= order.quantity_remaining * order.price_per_unit # Devolve todo o escrow
-                db.session.add(order)
-                db.session.add(creator_jogador)
-                return (False, "O comprador não pôde pagar o imposto. A ordem foi cancelada.")
 
-            # 4. Transação Financeira
-            creator_jogador.dinheiro_reservado -= total_value # Libera o dinheiro do escrow
+            custo_total_com_imposto = total_value + imposto_devido
+            
+            creator_jogador.dinheiro_reservado -= custo_total_com_imposto
             creator_jogador.dinheiro -= imposto_devido # Paga o imposto
-            taker_jogador.dinheiro += total_value # Vendedor recebe o valor bruto
+            taker_jogador.dinheiro += total_value
             
             # 5. Transação de Itens
             recurso_taker.quantidade -= quantity_to_fill
@@ -244,7 +238,7 @@ def fill_order(taker_jogador: Jogador, order_id: int, quantity_to_fill: float):
                 regiao_id=taker_jogador.regiao_atual_id, # Região do VENDEDOR
                 tipo_recurso=order.resource_type,
                 quantidade=quantity_to_fill,
-                data_expiracao = datetime.utcnow() + timedelta(minutes=current_app.config['TEMPO_LIMITE_PLANEJAMENTO_MIN'])
+                data_expiracao = datetime.utcnow() + timedelta(minutes=current_app.config['RECURSO_NA_MINA_EXPIRACAO_MIN'])
             )
             db.session.add(recurso_na_mina)
             
@@ -254,7 +248,9 @@ def fill_order(taker_jogador: Jogador, order_id: int, quantity_to_fill: float):
                 order.status = 'COMPLETED'
                 
             # 8. Histórico
-            db.session.add(HistoricoAcao(jogador_id=creator_jogador.id, tipo_acao='COMPRA_MERCADO', descricao=f"Comprou {quantity_to_fill:.0f}t de {order.resource_type} por R$ {total_value:,.2f} (Imposto: R$ {imposto_devido:,.2f}). Recurso em {taker_jogador.regiao_atual.nome}.", dinheiro_delta=-(total_value + imposto_devido)))
+            db.session.add(HistoricoAcao(jogador_id=creator_jogador.id, tipo_acao='COMPRA_MERCADO', descricao=f"Comprou {quantity_to_fill:.0f}t de {order.resource_type} por R$ {total_value:,.2f} (Imposto: R$ {imposto_devido:,.2f}). Recurso em {taker_jogador.regiao_atual.nome}.", 
+                                         dinheiro_delta=0,
+                                         gold_delta=0))
             db.session.add(HistoricoAcao(jogador_id=taker_jogador.id, tipo_acao='VENDA_MERCADO', descricao=f"Vendeu {quantity_to_fill:.0f}t de {order.resource_type} por R$ {total_value:,.2f} para uma ordem de compra.", dinheiro_delta=total_value))
 
             return (True, f"Venda de {quantity_to_fill:.0f}t realizada com sucesso!")
@@ -290,9 +286,16 @@ def cancel_order(jogador: Jogador, order_id: int):
                 db.session.add(recurso)
                 
         elif order.order_type == 'BUY':
-            # Devolve dinheiro reservado
-            custo_reservado = order.quantity_remaining * order.price_per_unit
-            jogador.dinheiro_reservado = max(0, jogador.dinheiro_reservado - custo_reservado)
+            # 1. Calcula o valor restante
+            custo_valor_restante = order.quantity_remaining * order.price_per_unit
+            
+            # 2. Calcula o imposto restante (com base no valor restante)
+            imposto_restante = _calculate_tax(jogador, order.regiao, custo_valor_restante)
+            
+            # 3. Devolve a soma
+            total_a_devolver = custo_valor_restante + imposto_restante
+            
+            jogador.dinheiro_reservado = max(0, jogador.dinheiro_reservado - total_a_devolver)
             db.session.add(jogador)
             
         db.session.add(order)
