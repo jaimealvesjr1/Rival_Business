@@ -1,236 +1,109 @@
 {% extends "base.html" %}
 {% block content %}
-<h1 class="mt-4"><i class="fas fa-user-circle me-2"></i>Perfil de {{ jogador.username }}</h1>
-<p class="lead">Visualize as informações sobre seu personagem.</p>
+
+<div class="d-flex justify-content-between align-items-center mt-4 mb-3">
+    <h2 class="font-weight-bold"><i class="fas fa-user-circle text-primary"></i> Perfil: {{ jogador.username }}</h2>
+    <span class="badge bg-primary text-white p-2" style="border-radius: 12px; font-size: 1rem;">Nível {{ jogador.nivel }}</span>
+</div>
 
 <div class="row">
-    
-    {# --- COLUNA ESQUERDA: ESTATÍSTICAS E PROGRESSO --- #}
-    <div class="col-md-6">
-        
-        <h3 class="mt-4"><i class="fas fa-chart-bar me-2"></i>Estatísticas Principais</h3>
-        <div class="card mb-4">
-            <div class="card-body small">
-                
-                {# --- STATUS DE RESIDÊNCIA/VIAGEM --- #}
-                {% if jogador.regiao_atual.id != jogador.regiao_residencia_id %}
-                    {% if pedido_ativo %}
-                        <div class="alert alert-info py-2 text-center">
-                            <strong><i class="fas fa-exclamation-triangle me-1"></i> Pedido Ativo para Residência em:</strong><br>
-                            {{ pedido_ativo.regiao_destino.nome }}
-                            <p class="mb-1 small" id="residency-countdown" data-seconds="{{ tempo_restante_residencia }}">Calculando...</p>
-                            <form method="POST" action="{{ url_for('game_actions.cancel_residency') }}" class="d-inline mt-2">
-                                <button type="submit" class="btn btn-sm btn-danger">Cancelar Pedido</button>
-                            </form>
-                        </div>
-                    {% else %}
-                        {% if not viagem_ativa %}
-                        <div class="alert alert-warning py-2 text-center">
-                            <strong class="d-block">{{ jogador.regiao_atual.nome }}</strong>
-                            <i class="fas fa-map-marker-alt me-1"></i> Você está aqui, mas não é sua residência.<br>
-                            <form class="mt-2" method="POST" action="{{ url_for('game_actions.request_residency', regiao_id=jogador.regiao_atual.id) }}">
-                                <button type="submit" class="btn btn-success btn-sm">Pedir Residência</button>
-                            </form>
-                        </div>
-                        {% else %}
-                        <div class="alert alert-warning py-2 text-center">
-                            <strong class="d-block"><i class="fas fa-route me-1"></i> Você está em Viagem!</strong>
-                            <p class="small mb-0">Para {{ viagem_ativa.destino.nome }}</p>
-                        </div>
-                        {% endif %}
-                    {% endif %}
-                {% else %}
-                    <div class="alert alert-success py-2 text-center">
-                        <strong class="d-block"><i class="fas fa-home me-1"></i> {{ jogador.regiao_atual.nome }}</strong>
-                        Sua residência oficial.
+    <div class="col-md-8">
+        <div class="glass-card">
+            <div class="card-header"><i class="fas fa-chart-bar mr-1"></i> Estatísticas Pessoais</div>
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-home text-muted"></i> Residência</span>
+                    <strong>{% if jogador.regiao_residencia %}{{ jogador.regiao_residencia.nome }}{% else %}N/A{% endif %}</strong>
+                </li>
+                <li class="list-group-item">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span><i class="fas fa-star text-warning"></i> Experiência (XP)</span>
+                        <strong>{{ jogador.experiencia | currency_format('', separator='.') }} / {{ jogador.get_xp_needed_for_next_level() | currency_format('', separator='.') }}</strong>
                     </div>
-                {% endif %}
-                <hr class="my-2">
-                <div class="row text-center">
-                    <div class="col-md-6">
-                        <strong class="text-primary">Desenvolvimento:</strong><br>{{ "%.1f"|format(jogador.regiao_atual.indice_desenvolvimento) }}
+                    <div class="progress" style="height: 6px; border-radius: 10px; background-color: rgba(0,0,0,0.1);">
+                        {% set xp_pct = (jogador.experiencia / jogador.get_xp_needed_for_next_level()) * 100 %}
+                        <div class="progress-bar bg-warning" role="progressbar" style="width: {{ xp_pct }}%;"></div>
                     </div>
-                    <div class="col-md-6">
-                        <strong class="text-secondary">Saúde:</strong><br>{{ "%.0f"|format(jogador.regiao_atual.indice_saude * 10) }}
-                    </div>
-                    <div class="col-md-6">
-                        <strong class="text-info">Educação:</strong><br>{{ "%.0f"|format(jogador.regiao_atual.indice_educacao * 10) }}
-                    </div>
-                    <div class="col-md-6">
-                        <strong class="text-danger">Tributação:</strong><br>{{ (jogador.regiao_atual.taxa_imposto_geral * 100)|round(0) }}%
-                    </div>
-                </div>
-                
-            </div>
-        </div>
-        <div class="card mb-4">
-            <div class="card-body">
-                
-                {# Informações principais (Dinheiro, Gold, Energia) movidas para o topo da página no base.html #}
-                
-                <p class="mb-1"><strong>Nível Atual:</strong> {{ jogador.nivel }}</p>
-                
-                {% set xp_needed = jogador.get_xp_needed_for_next_level() %}
-                {% set xp_progress = jogador.experiencia / xp_needed * 100 %}
-
-                <p class="mb-1">
-                    <strong>Experiência:</strong> 
-                    {{ jogador.experiencia | currency_format('', separator='.') }} / 
-                    {{ xp_needed | currency_format('', separator='.') }}
-                    <small>(XP total para o Nv. {{ jogador.nivel + 1 }})</small>
-                </p>
-                
-                {# BARRA DE PROGRESSO DE NÍVEL MAIS VISÍVEL #}
-                <div class="progress mb-3" style="height: 20px;">
-                    <div class="progress-bar bg-info" role="progressbar" style="width: {{ xp_progress }}%;" aria-valuenow="{{ jogador.experiencia }}" aria-valuemin="0" aria-valuemax="{{ xp_needed }}">
-                        <strong class="small text-dark">{{ "%.0f"|format(xp_progress) }}%</strong>
-                    </div>
-                </div>
-
-                <p class="mb-1">
-                    <strong><i class="fas fa-briefcase me-1"></i> Experiência de Trabalho:</strong> {{ "%.0f"|format(jogador.experiencia_trabalho) }} XP
-                </p>
-                
-            </div>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-bolt text-danger"></i> Energia</span>
+                    <strong>{{ jogador.energia | int }} / 200</strong>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-wallet text-success"></i> Dinheiro Vivo</span>
+                    <strong class="text-success">{{ jogador.dinheiro | currency_format('R$', '.') }}</strong>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-coins text-warning"></i> Reservas de Ouro</span>
+                    <strong>{{ "%.2f"|format(jogador.gold) }} Kg</strong>
+                </li>
+            </ul>
         </div>
     </div>
 
-    {# --- COLUNA DIREITA: LOCALIZAÇÃO E RANKING --- #}
-    <div class="col-md-6">        
-
-        {# RANKING GLOBAL #}
-        <h3 class="mt-4"><i class="fas fa-trophy me-2"></i>Ranking Global</h3>
-        <div class="card col-md-12">
-            <div class="card-body">
-                <ul class="nav nav-tabs" id="rankTabs" role="tablist">
-                <li class="nav-item">
-                    <a class="nav-link active" id="player-rank-tab" data-bs-toggle="tab" href="#player-rank" role="tab">Jogadores</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" id="region-rank-tab" data-bs-toggle="tab" href="#region-rank" role="tab">Regiões</a>
-                </li>
-                </ul>
-
-                <div class="tab-content mt-3" id="rankTabsContent">
-                    
-                    {# --- ABA 1: RANKING DE JOGADORES --- #}
-                    <div class="tab-pane fade show active" id="player-rank" role="tabpanel">
-                        <div class="table-responsive">
-                            <table class="table table-striped table-sm">
-                                <thead>
-                                    <tr>
-                                        <th>#</th>
-                                        <th>Usuário</th>
-                                        <th>Experiência</th>
-                                        <th>Dinheiro</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for jogador_rank in rank_jogadores[:5] %}
-                                    <tr>
-                                        <td>{{ loop.index }}</td>
-                                        <td><strong>{{ jogador_rank.username }}</strong></td>
-                                        <td>{{ jogador_rank.experiencia | currency_format('', separator='.') }} XP</td>
-                                        <td>{{ jogador_rank.dinheiro | currency_format('R$', '.') }}</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
+    <div class="col-md-4">
+        <div class="glass-card">
+            <div class="card-header"><i class="fas fa-map-marker-alt text-danger mr-1"></i> Localização Atual</div>
+            <div class="p-3 text-center" style="background: rgba(255,255,255,0.3);">
+                <h4 class="mb-0">{{ jogador.regiao_atual.nome }}</h4>
+                {% if jogador.regiao_atual.id != jogador.regiao_residencia_id %}
+                    {% if pedido_ativo and pedido_ativo.regiao_destino_id == jogador.regiao_atual.id %}
+                        <div class="alert alert-info py-2 mt-3 small rounded-3 border-0 shadow-sm">
+                            <strong>Mudança em andamento!</strong><br>
+                            <span id="residency-countdown" data-seconds="{{ tempo_restante_residencia }}">Calculando...</span>
+                            <form method="POST" action="{{ url_for('game_actions.cancel_residency') }}" class="mt-2">
+                                <button type="submit" class="btn btn-sm btn-danger btn-modern w-100">Cancelar Viagem</button>
+                            </form>
                         </div>
-                    </div>
-
-                    {# --- ABA 2: RANKING DE REGIÕES --- #}
-                    <div class="tab-pane fade" id="region-rank" role="tabpanel">
-                        <div class="table-responsive">
-                            <table class="table table-striped table-sm">
-                                <thead>
-                                    <tr>
-                                        <th>#</th>
-                                        <th>Região</th>
-                                        <th>Dev.</th>
-                                        <th>Edu.</th>
-                                        <th>Saúde</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for regiao in rank_regioes[:5] %}
-                                    <tr>
-                                        <td>{{ loop.index }}</td>
-                                        <td><strong>{{ regiao.nome }}</strong></td>
-                                        <td class="text-primary">{{ "%.1f"|format(regiao.indice_desenvolvimento) }} / 10</td>
-                                        <td class="text-info">{{ "%.0f"|format(regiao.indice_educacao * 10) }} / 10</td>
-                                        <td class="text-secondary">{{ "%.0f"|format(regiao.indice_saude * 10) }} / 10</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
+                    {% elif not pedido_ativo and not viagem_ativa %}
+                        <div class="mt-3">
+                            <span class="badge bg-secondary mb-2">Visitante</span><br>
+                            <form method="POST" action="{{ url_for('game_actions.request_residency', regiao_id=jogador.regiao_atual.id) }}">
+                                <button type="submit" class="btn btn-success btn-modern btn-sm w-100">Mudar-se para cá</button>
+                            </form>
                         </div>
-                    </div>
-                </div>
+                    {% endif %}
+                {% else %}
+                    <div class="mt-3"><span class="badge bg-success p-2 px-3" style="border-radius: 20px;"><i class="fas fa-home"></i> Lar Doce Lar</span></div>
+                {% endif %}
             </div>
+            <ul class="list-group list-group-flush small">
+                <li class="list-group-item d-flex justify-content-between">Índ. Desenvolvimento: <strong class="text-primary">{{ "%.1f"|format(jogador.regiao_atual.indice_desenvolvimento) }} / 10</strong></li>
+                <li class="list-group-item d-flex justify-content-between">Tributação: <strong class="text-danger">{{ (jogador.regiao_atual.taxa_imposto_geral * 100)|round(0) }}%</strong></li>
+            </ul>
         </div>
     </div>
 </div>
 
+<h3 class="mt-4 mb-3 font-weight-bold">Academia de Habilidades</h3>
+{% set skills = [('educacao', 'Educação', 'fa-book', 'text-info'), ('filantropia', 'Filantropia', 'fa-hands-helping', 'text-success'), ('saude', 'Saúde', 'fa-heartbeat', 'text-danger')] %}
 <div class="row">
-<h2 class="mt-4"><i class="fas fa-hand-holding-heart me-2"></i>Melhorias de Habilidades</h2>
-
-    {% set skills = [
-        ('educacao', 'Educação', 'fas fa-graduation-cap', 'text-info'), 
-        ('filantropia', 'Filantropia', 'fas fa-heart', 'text-warning'), 
-        ('saude', 'Saúde', 'fas fa-heartbeat', 'text-danger')
-    ] %}
-    
-    {% set treino_em_andamento = treino_ativo is not none %}
-
-    {% for skill_key, skill_name, icon, text_color in skills %}
-        {% set info = jogador.get_skill_upgrade_info(skill_key) %}
+    {% for skill_key, skill_name, icon, color_class in skills %}
         {% set current_level = jogador['habilidade_' + skill_key] %}
-        {% set is_training_this = treino_ativo and treino_ativo.habilidade == skill_key %}
-        {% set is_armazem_training = treino_ativo.habilidade.startswith('armazem_') if treino_ativo else false %}
-        {% set pode_pagar = jogador.dinheiro >= info.money and jogador.gold >= info.gold %}
+        {% set next_level_cost = jogador.get_skill_cost(skill_key, current_level) %}
 
     <div class="col-md-4 mb-4">
-        <div class="card h-100">
-            <div class="card-header bg-primary text-white">
-                <i class="{{ icon }} me-2"></i> {{ skill_name }} - Nível {{ "%.0f"|format(current_level) }}
+        <div class="glass-card h-100 text-center">
+            <div class="card-header bg-transparent border-0 pt-4 pb-0">
+                <i class="fas {{ icon }} {{ color_class }} fa-2x mb-2"></i>
+                <h5 class="font-weight-bold">{{ skill_name }}</h5>
+                <span class="badge bg-dark text-white p-2">Nível {{ "%.0f"|format(current_level) }}</span>
             </div>
-            <div class="card-body small">
-                
-                {% if treino_em_andamento %}
-                        {% if is_training_this %}
-                    
-                            <div class="alert alert-info text-center" 
-                                    id="countdown-{{ skill_key }}" 
-                                    data-seconds="{{ tempo_restante_segundos }}">
-                                <i class="fas fa-clock me-1"></i> Treinando...
-                            </div>
-                            <p class="text-center small">Conclusão: {{ treino_ativo.data_fim | datetime_local }}</p>
-                    
-                        {% elif is_armazem_training %}                    
-                            <div class="alert alert-warning py-1 small">
-                                <i class="fas fa-warehouse me-1"></i> Melhoria de Armazém em andamento.
-                            </div>
-                        {% else %}
-                            <div class="alert alert-danger py-1 small">
-                                <i class="fas fa-exclamation-circle me-1"></i> Outra Habilidade sendo treinada.
-                            </div>
-                        {% endif %}
-                    
+            <div class="card-body">
+                {% if treino_ativo and treino_ativo.habilidade == skill_key %}
+                    <div class="alert alert-info border-0 shadow-sm" id="countdown-{{ skill_key }}" data-seconds="{{ tempo_restante_segundos }}">
+                        Treinando...
+                    </div>
+                {% elif treino_ativo %}
+                    <p class="text-muted small">Ocupado treinando outra habilidade.</p>
                 {% else %}
-                    <p class="mb-1"><strong>Melhoria:</strong> Nível {{ "%.0f"|format(info.next_level) }}</p>
-                    <p class="mb-1"><strong>Efeito:</strong> <span class="{{ text_color }}">{{ info.effect }}</span></p>
-                    <p class="mb-1"><strong><i class="fas fa-coins me-1"></i> Dinheiro:</strong> {{ info.money | currency_format('R$', '.') }}
-                            {% if jogador.dinheiro >= info.money %}✅{% else %}❌{% endif %}</p>
-                    <p class="mb-1"><strong><i class="fas fa-dice-d20 me-1"></i> Gold:</strong> {{ "%.2f"|format(info.gold) }} Kg
-                            {% if jogador.gold >= info.gold %}✅{% else %}❌{% endif %}</p>
-                    <p class="mb-1"><strong><i class="fas fa-clock me-1"></i> Tempo:</strong> {{ info.time }} minutos</p>
-                    <hr class="my-2">
+                    <div class="bg-light rounded p-2 mb-3" style="background: rgba(255,255,255,0.4) !important;">
+                        <small class="d-block"><strong>Custo:</strong> {{ next_level_cost.custo | currency_format('R$', '.') }}</small>
+                        <small class="d-block"><strong>Tempo:</strong> {{ next_level_cost.tempo_minutos }} min</small>
+                    </div>
                     <form method="POST" action="{{ url_for('skill_development.train_skill', skill_key=skill_key) }}">
-                        <button type="submit" 
-                                class="btn btn-sm btn-success mt-2 w-100" 
-                                {% if not pode_pagar %}disabled{% endif %}>
-                            <i class="fas fa-bolt me-1"></i> Treinar {{ skill_name }}
+                        <button type="submit" class="btn btn-primary btn-modern btn-sm w-100" {% if jogador.dinheiro < next_level_cost.custo %}disabled{% endif %}>
+                            Evoluir para Nv. {{ "%.0f"|format(current_level + 1) }}
                         </button>
                     </form>
                 {% endif %}
@@ -240,31 +113,22 @@
     {% endfor %}
 </div>
 
-{# --- SEÇÃO DE HISTÓRICO --- #}
-<div class="row">
-<h2 class="mt-4"><i class="fas fa-history me-2"></i>Ações Recentes</h2>
-    <div class="col-md-12">
-        <ul class="list-group mb-4">
-            {% set acoes_recentes = jogador.historico_acoes[:8] %} 
-            
-            {% if acoes_recentes %}
-                {% for acao in acoes_recentes %}
-                    {% set cor = 'text-success' if acao.dinheiro_delta >= 0 or acao.gold_delta >= 0 else 'text-danger' %}
-                    {% set icon_type = 'fas fa-plus-circle' if acao.dinheiro_delta >= 0 or acao.gold_delta >= 0 else 'fas fa-minus-circle' %}
-                    
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <span class="{{ cor }} small">
-                            <i class="{{ icon_type }} me-1"></i> {{ acao.tipo_acao | action_format }}
-                        </span>
-                        <span class="flex-grow-1 ms-3 me-3">{{ acao.descricao }}</span>
-                        <span class="small text-muted">{{ acao.timestamp | datetime_local }}</span> 
-                    </li>
-                {% endfor %}
-            {% else %}
-                <li class="list-group-item">Nenhuma ação registrada ainda.</li>
-            {% endif %}
-        </ul>
-    </div>
+<h3 class="mt-4 mb-3 font-weight-bold">Histórico Recente</h3>
+<div class="glass-card">
+    <ul class="list-group list-group-flush">
+        {% set acoes_recentes = jogador.historico_acoes[:8] %} 
+        {% if acoes_recentes %}
+            {% for acao in acoes_recentes %}
+                {% set cor = 'text-success' if acao.dinheiro_delta >= 0 or acao.gold_delta >= 0 else 'text-danger' %}
+                <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+                    <span class="{{ cor }} font-weight-bold" style="min-width: 80px;">{{ acao.tipo_acao | action_format }}</span>
+                    <span class="flex-grow-1 mx-3">{{ acao.descricao }}</span>
+                    <span class="small text-muted" style="min-width: 120px; text-align: right;">{{ acao.timestamp | datetime_local }}</span> 
+                </li>
+            {% endfor %}
+        {% else %}
+            <li class="list-group-item text-center text-muted py-4">Sua jornada começa agora. Nenhuma ação registrada.</li>
+        {% endif %}
+    </ul>
 </div>
-    
 {% endblock %}

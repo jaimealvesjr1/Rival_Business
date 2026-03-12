@@ -2,7 +2,8 @@ from flask import current_app
 from app import db
 from app.models import (Jogador, TreinamentoAtivo, Regiao, RecursoNaMina, 
                         Veiculo, HistoricoAcao, MarketOrder, ArmazemRecurso,
-                        CampoAgricola, PlantioAtivo)
+                        CampoAgricola, PlantioAtivo, ProductionJob)
+from app.services import manufacturing_service
 from datetime import datetime, timedelta
 from sqlalchemy.orm import joinedload
 from math import ceil
@@ -21,21 +22,23 @@ def check_vehicle_validity(app):
         ).all()
 
         if veiculos_expirados:
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] Iniciando a remoção de {len(veiculos_expirados)} veículos expirados.")
+            
             for veiculo in veiculos_expirados:
                 # 1. REGISTRA NO HISTÓRICO
                 hist = HistoricoAcao(
                     jogador_id=veiculo.armazem.jogador_id,
                     tipo_acao='VEICULO_VENCIDO',
                     descricao=f"Veículo '{veiculo.nome}' expirou e foi removido da frota.",
-                    dinheiro_delta=0.0, # Sem perda direta de dinheiro
+                    dinheiro_delta=0.0,
                     gold_delta=0.0
                 )
                 db.session.add(hist)
-
                 db.session.delete(veiculo)
             
             try:
                 db.session.commit()
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] SUCCESSO: Veículos expirados deletados.")
             except Exception as e:
                 db.session.rollback()
                 print(f"Erro ao deletar veículos expirados: {e}")
@@ -162,6 +165,22 @@ def regenerate_player_status(app):
         from datetime import datetime, timedelta
         # 2. Busca todos os jogadores
         jogadores = Jogador.query.all()
+
+        production_jobs_concluidos = ProductionJob.query.filter(
+            ProductionJob.data_fim <= datetime.utcnow()
+        ).all()
+        
+        for job in production_jobs_concluidos:
+            jogador_job = Jogador.query.get(job.jogador_id)
+            
+            if jogador_job:
+                try:
+                    manufacturing_service.complete_manufacturing_jobs(job, jogador_job)
+                except Exception as e:
+                    db.session.rollback()
+                    print(f"ERRO ao concluir Job de Produção ID {job.id}: {e}")
+            else:
+                db.session.delete(job)
 
         for jogador in jogadores:
             

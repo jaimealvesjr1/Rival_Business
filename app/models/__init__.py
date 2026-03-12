@@ -6,7 +6,6 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 @login_manager.user_loader
 def load_user(user_id):
-    """Carrega um usuário pelo ID para o Flask-Login."""
     return Jogador.query.get(int(user_id))
 
 # 1. ENTIDADE JOGADOR
@@ -15,9 +14,7 @@ class Jogador(db.Model, UserMixin):
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
     
-    # *** ADIÇÃO PARA O ADMIN ***
     is_admin = db.Column(db.Boolean, default=False)
-    # *************************
     
     # Recursos e Atributos Iniciais
     dinheiro = db.Column(db.Float, default=1000.00)
@@ -265,6 +262,57 @@ class TreinamentoAtivo(db.Model):
     def __repr__(self):
         return f'<Treino: Jogador {self.jogador_id} -> {self.habilidade} (Nv {self.nivel_alvo})>'
 
+# NOVO: ENTIDADE DE RECEITA DE PRODUÇÃO (ProductionRecipe)
+class ProductionRecipe(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Nome da receita (e.g., 'Fundição de Aço')
+    name = db.Column(db.String(100), unique=True, nullable=False)
+    
+    # Tipo de fábrica/empresa necessária para esta receita
+    factory_type = db.Column(db.String(50), nullable=False) # e.g., 'Fundicao', 'Refinaria'
+    
+    # Item de entrada (Nome do recurso/item - e.g., 'ferro', 'aco')
+    input_item_type = db.Column(db.String(50), nullable=False) 
+    input_quantity = db.Column(db.Float, default=1.0)
+    
+    # Item de saída (Nome do recurso/item)
+    output_item_type = db.Column(db.String(50), nullable=False)
+    output_quantity = db.Column(db.Float, default=1.0)
+    
+    # Custo de energia (por ciclo de produção)
+    energy_cost = db.Column(db.Integer, default=10)
+
+    # Tempo de produção (em minutos)
+    production_time_minutes = db.Column(db.Integer, default=60)
+    
+    # Requisito de Nível de Especialização do Armazém
+    warehouse_specialization_req = db.Column(db.Integer, default=1)
+
+    def __repr__(self):
+        return f'<Recipe {self.name}: {self.input_quantity} {self.input_item_type} -> {self.output_quantity} {self.output_item_type}>'
+
+# ENTIDADE DE TRABALHO DE PRODUÇÃO ATIVO (ProductionJob)
+class ProductionJob(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    
+    jogador_id = db.Column(db.Integer, db.ForeignKey('jogador.id'), nullable=False)
+    empresa_id = db.Column(db.Integer, db.ForeignKey('empresa.id'), nullable=False)
+    recipe_id = db.Column(db.Integer, db.ForeignKey('production_recipe.id'), nullable=False)
+    
+    # Multiplicador usado (Quantos ciclos foram iniciados)
+    quantity_multiplier = db.Column(db.Integer, nullable=False) 
+    
+    data_fim = db.Column(db.DateTime, nullable=False) 
+
+    # Relações
+    jogador = db.relationship('Jogador', backref='production_jobs')
+    empresa = db.relationship('Empresa', backref='active_production')
+    recipe = db.relationship('ProductionRecipe') # Adiciona a relação com a receita
+
+    def __repr__(self):
+        return f'<Job: Jogador {self.jogador_id} produzindo {self.recipe.output_item_type} ({self.quantity_multiplier} ciclos)>'
+
 class Empresa(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     regiao_id = db.Column(db.Integer, db.ForeignKey('regiao.id'), nullable=False)
@@ -287,6 +335,9 @@ class Empresa(db.Model):
 
     # Relacionamento de volta para o jogador proprietário
     proprietario = db.relationship('Jogador', backref='empresas_proprias')
+
+    # Tipo de Produção (e.g., 'ouro', 'ferro', 'Fundicao', 'Refinaria')
+    tipo_producao = db.Column(db.String(50), nullable=True)
 
     def __repr__(self):
         return f'<Empresa ({self.tipo.capitalize()}) {self.nome} em Localização {self.regiao_id}>'

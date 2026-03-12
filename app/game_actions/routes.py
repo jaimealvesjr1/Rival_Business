@@ -5,15 +5,15 @@ from app.utils import calculate_distance_km, format_currency_python
 from app.models import (Regiao, Jogador, ViagemAtiva, PedidoResidencia, Empresa, 
                         Armazem, ArmazemRecurso, HistoricoAcao, TransporteAtivo, 
                         Veiculo, RecursoNaMina, CampoAgricola, PlantioAtivo)
-from app.services import mining_service, player_service, farming_service
+from app.services import mining_service, player_service, farming_service, logistics_service, manufacturing_service
 from app.game_actions import bp
 from app.game_actions.forms import OpenCompanyForm, OpenCampoForm
 from datetime import datetime, timedelta
 from math import ceil
 from config import Config
+import math
 
 footer = {'ano': Config.ANO_ATUAL, 'versao': Config.VERSAO_APP}
-
 
 @bp.route('/travel', methods=['POST'])
 @login_required
@@ -399,188 +399,80 @@ def start_transport():
     jogador = Jogador.query.get(current_user.id)
     armazem = jogador.armazem 
     
-    # 1. Obter dados do POST (Região + Tipo)
-    regiao_id = request.form.get('regiao_id', type=int)
-    tipo_recurso = request.form.get('tipo_recurso', type=str)
-    
-    # 2. Buscar TODOS os recursos pendentes nesse grupo
-    recursos_para_transportar = RecursoNaMina.query.filter_by(
-        jogador_id=jogador.id,
-        regiao_id=regiao_id,
-        tipo_recurso=tipo_recurso
-    ).all()
-
-    if not recursos_para_transportar or not armazem:
-        flash("Recursos para transporte não encontrados ou expiraram.", 'danger')
-        return redirect(url_for('warehouse.view_warehouse'))
-
-    # 3. Calcular a quantidade total
-    quantidade_total_pendente = sum(r.quantidade for r in recursos_para_transportar)
-    
-    if quantidade_total_pendente <= 0:
-        for r in recursos_para_transportar: db.session.delete(r)
-        db.session.commit()
-        flash("Recursos na mina zerados e removidos.", 'info')
+    if not armazem:
+        flash("Erro crítico: Armazém não inicializado.", 'danger')
         return redirect(url_for('warehouse.view_warehouse'))
     
-    # Salva a região de origem (do primeiro item, já que são agrupados)
-    regiao_origem = recursos_para_transportar[0].regiao
-    
+    form_data = request.form
+
     try:
-        # 2. CÁLCULO DE TEMPO BASE E DISTÂNCIA
-        regiao_origem = db.session.get(Regiao, regiao_id) 
-        regiao_destino = armazem.regiao 
-        
-        if not regiao_origem:
-             flash("Região de origem não encontrada.", 'danger')
-             return redirect(url_for('warehouse.view_warehouse'))
+        success, message, ultima_data_fim, custo_frete_total, total_viagens_agendadas = logistics_service.schedule_transport(
+            jogador=jogador,
+            armazem=armazem,
+            form_data=form_data
+        )
+        if success:
+            db.session.commit()
 
-        distancia_km = calculate_distance_km(regiao_origem.latitude,
-                                             regiao_origem.longitude, 
-                                             regiao_destino.latitude,
-                                             regiao_destino.longitude)
-
-        tempo_minutos_base = current_app.config['TEMPO_TRANSPORTE_LOCAL_MIN']
-        if distancia_km >= 1.0:
-            tempo_horas_base = (distancia_km / current_app.config['VELOCIDADE_BASE_KMH']) * 2 
-            tempo_minutos_base = ceil(tempo_horas_base * 60)
-            tempo_minutos_base = max(current_app.config['TEMPO_TRANSPORTE_LOCAL_MIN'], tempo_minutos_base)
-
-        # 3. INICIALIZAÇÃO DE RASTREAMENTO E CUSTOS (CORRIGIDA)
-        total_viagens_agendadas = 0
-        recurso_coberto = 0.0
-        custo_frete_total = 0.0
-        
-        transporte_jobs = [] 
-        ultima_data_fim = datetime.utcnow()
-        veiculo_disponivel_em = {v.id: datetime.utcnow() for v in armazem.frota.all()}
-
-        # 4. ITERAÇÃO MESTRA: CALCULA CUSTO, TEMPO SEQUENCIAL E CRIA JOBS
-        
-        for key, viagens_value in request.form.items():
-            if key.startswith('viagens_') and int(viagens_value) > 0:
-                veiculo_id = int(key.split('_')[1])
-                viagens_requeridas = int(viagens_value)
-                veiculo = Veiculo.query.get(veiculo_id)
-
-                if veiculo and not veiculo.transporte_atual:
-                    custo_unitario_por_viagem = 0.0
-                    
-                    # 4a. CÁLCULO DE CUSTO PARA ESTE VEÍCULO
-                    if distancia_km < 1.0:
-                        custo_unitario_por_viagem = current_app.config['CUSTO_MINIMO_FRETE_LOCAL'] 
-                    else:
-                        # Frete = Custo por ton/km * Capacidade * Distância Ida
-                        custo_unitario_por_viagem = veiculo.custo_tonelada_km * veiculo.capacidade * distancia_km 
-                        
-                    custo_frete_total += custo_unitario_por_viagem * viagens_requeridas
-                    
-                    # 4b. CÁLCULO DE TEMPO AJUSTADO AO VEÍCULO
-                    tempo_ajuste_velocidade = 1.0 / veiculo.velocidade 
-                    tempo_total_por_viagem = ceil(tempo_minutos_base * tempo_ajuste_velocidade)
-                    tempo_total_por_viagem = max(current_app.config['TEMPO_TRANSPORTE_LOCAL_MIN'], tempo_total_por_viagem)
-                    
-                    # 4c. SEQUENCIAMENTO E CRIAÇÃO
-                    tempo_inicio = veiculo_disponivel_em[veiculo_id] # Pega o tempo que o veículo está livre (datetime)
-                    
-                    for i in range(viagens_requeridas):
+            if message.startswith("AVISO"):
+                flash(message, 'warning')
             
-                        # 1. Determina quanto recurso SOBRA na mina
-                        recurso_ainda_pendente_na_mina = quantidade_total_pendente - recurso_coberto 
-                        
-                        # 2. A quantidade a transportar é o MIN(Capacidade do Veículo, Recurso Pendente)
-                        quantidade_a_enviar = min(veiculo.capacidade, recurso_ainda_pendente_na_mina) # <<< CORREÇÃO AQUI
-                        
-                        # Se a quantidade a enviar for <= 0, paramos. (Isso deve ser evitado pelo front-end)
-                        if quantidade_a_enviar <= 0.0:
-                            break 
-                            
-                        data_fim_viagem = tempo_inicio + timedelta(minutes=tempo_total_por_viagem)
-                        tempo_inicio = data_fim_viagem # Atualiza o rastreamento para a próxima viagem
-                        
-                        # CRIAÇÃO DO JOB
-                        transporte = TransporteAtivo(
-                            jogador_id=jogador.id, veiculo_id=veiculo.id, regiao_origem_id=regiao_origem.id,
-                            regiao_destino_id=regiao_destino.id, tipo_recurso=tipo_recurso,
-                            quantidade=quantidade_a_enviar, data_fim=data_fim_viagem
-                        )
-                        transporte_jobs.append(transporte)
-            
-                        recurso_coberto += quantidade_a_enviar
-                        total_viagens_agendadas += 1
-                        
-                        if data_fim_viagem > ultima_data_fim:
-                            ultima_data_fim = data_fim_viagem
-                    
-                    # 4.3 Salva a ÚLTIMA data de fim DESTE VEÍCULO no rastreamento
-                    veiculo_disponivel_em[veiculo_id] = tempo_inicio 
+            tempo_total_minutos_decorrido = math.ceil((ultima_data_fim - datetime.utcnow()).total_seconds() / 60)
+            horas_display = int(tempo_total_minutos_decorrido // 60)
+            minutos_display = int(tempo_total_minutos_decorrido % 60)
 
-        # 5. VERIFICAÇÃO DE FUNDOS E SUBTRAÇÃO
-        if jogador.dinheiro < custo_frete_total:
-            flash(f"Dinheiro insuficiente para cobrir o frete. Custo total: {format_currency_python(custo_frete_total)}", 'danger')
-            return redirect(url_for('warehouse.view_warehouse'))
+            flash(f"Logística iniciada! {total_viagens_agendadas} viagens agendadas. Custo: {format_currency_python(custo_frete_total)}. Conclusão total: {horas_display}h e {minutos_display}m.", 'success')
         
-        if total_viagens_agendadas == 0:
-            flash("Nenhuma viagem agendada. Selecione os veículos e o número de viagens.", 'danger')
-            return redirect(url_for('warehouse.view_warehouse'))
-
-        # AÇÃO: Subtrai o custo TOTAL do frete
-        jogador.dinheiro -= custo_frete_total
-        
-        # 6. VALIDAÇÃO FINAL E LIMPEZA
-        
-        if recurso_coberto < quantidade_total_pendente:
-             recurso_restante = max(0.0, quantidade_total_pendente - recurso_coberto)
-             
-             # Deleta todos os antigos e cria um NOVO registro com o restante
-             for r in recursos_para_transportar:
-                 db.session.delete(r)
-             
-             expiracao_min = current_app.config['RECURSO_NA_MINA_EXPIRACAO_MIN']
-             
-             novo_remanescente = RecursoNaMina(
-                 jogador_id=jogador.id,
-                 regiao_id=regiao_id,
-                 tipo_recurso=tipo_recurso,
-                 quantidade=recurso_restante,
-                 data_expiracao = datetime.utcnow() + timedelta(minutes=expiracao_min)
-             )
-             db.session.add(novo_remanescente)
-             
-             flash(f"AVISO: {recurso_restante:.0f}t permanecerão na mina. Frete cobrado.", 'warning')
         else:
-             # Deleta todos os recursos do grupo, pois foram 100% transportados
-             for r in recursos_para_transportar:
-                 db.session.delete(r)
-        
-        descricao_acao = (
-            f"Frete agendado para {total_viagens_agendadas} viagens. Custo: {format_currency_python(custo_frete_total)}."
-        )
-        hist = HistoricoAcao(
-            jogador_id=jogador.id,
-            tipo_acao='FRETE_COBRADO',
-            descricao=descricao_acao,
-            dinheiro_delta=-custo_frete_total, 
-            gold_delta=0.0
-        )
+            db.session.rollback()
+            flash(message, 'danger')
 
-        db.session.add_all(transporte_jobs)
-        db.session.add(hist)
-
-        db.session.commit()
-        
-        # 7. FEEDBACK FINAL
-        tempo_total_minutos_decorrido = ceil((ultima_data_fim - datetime.utcnow()).total_seconds() / 60)
-        horas_display = int(tempo_total_minutos_decorrido // 60)
-        minutos_display = int(tempo_total_minutos_decorrido % 60)
-        
-        flash(f"Logística iniciada! {total_viagens_agendadas} viagens agendadas. Custo: {format_currency_python(custo_frete_total)}. Conclusão total: {horas_display}h e {minutos_display}m.", 'success')
-        
     except Exception as e:
         db.session.rollback()
         flash(f"Erro ao agendar transporte: {e}", "danger")
-        
+    
     return redirect(url_for('warehouse.view_warehouse'))
+
+@bp.route('/manufacture/<int:empresa_id>', methods=['POST'])
+@login_required
+def start_manufacture(empresa_id):
+    jogador = Jogador.query.get(current_user.id)
+    empresa = Empresa.query.get(empresa_id)
+    
+    # Verificação de propriedade (apenas o proprietário pode iniciar a produção)
+    if not empresa or empresa.proprietario_id != jogador.id:
+        flash("Acesso negado ou empresa não encontrada.", 'danger')
+        return redirect(url_for('work.work_dashboard'))
+    
+    # 1. Obter dados do formulário
+    try:
+        recipe_id = int(request.form.get('recipe_id'))
+        cycles = int(request.form.get('cycles'))
+    except (ValueError, TypeError):
+        flash("Dados de produção inválidos.", 'danger')
+        return redirect(url_for('work.work_dashboard'))
+
+    # 2. Chamar o serviço
+    try:
+        success, message = manufacturing_service.start_manufacturing(
+            jogador=jogador,
+            empresa=empresa,
+            recipe_id=recipe_id,
+            cycles=cycles
+        )
+        
+        if success:
+            db.session.commit()
+            flash(message, 'success')
+        else:
+            db.session.rollback()
+            flash(message, 'danger')
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Erro fatal ao iniciar produção: {e}", 'danger')
+        
+    return redirect(url_for('work.work_dashboard'))
 
 @bp.route('/campo/open', methods=['GET', 'POST']) 
 @login_required

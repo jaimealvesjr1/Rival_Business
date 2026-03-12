@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+
+{% block content %}
+    <h1 class="mt-4"><i class="fas fa-edit me-2"></i> Editar Receita: {{ receita.name }}</h1>
+    
+    <div class="row">
+        <div class="col-md-12">
+            <p>Ajustando a receita <strong>{{ receita.id }} - {{ receita.name }}</strong>.</p>
+            
+            <form method="POST" action="{{ url_for('manage.edit_recipe', recipe_id=receita.id) }}">
+                {{ form.hidden_tag() }}
+                <div class="row">
+                    <h4 class="mt-4">Identificação e Tipo</h4>
+                    <div class="col-md-6">{{ wtf.form_field(form.name) }}</div>
+                    <div class="col-md-6">{{ wtf.form_field(form.factory_type) }}</div>
+                <hr>
+                    <h4 class="mt-4">Inputs (O que Consome)</h4>
+                    <div class="col-md-6">{{ wtf.form_field(form.input_item_type) }}</div>
+                    <div class="col-md-6">{{ wtf.form_field(form.input_quantity) }}</div>
+                <hr>
+                    <h4 class="mt-4">Outputs (O que Produz)</h4>
+                    <div class="col-md-6">{{ wtf.form_field(form.output_item_type) }}</div>
+                    <div class="col-md-6">{{ wtf.form_field(form.output_quantity) }}</div>
+                <hr>
+                    <h4 class="mt-4">Custos e Requisitos</h4>
+                    <div class="col-md-3">{{ wtf.form_field(form.energy_cost) }}</div>
+                    <div class="col-md-3">{{ wtf.form_field(form.production_time_minutes) }}</div>
+                    <div class="col-md-3">{{ wtf.form_field(form.warehouse_specialization_req) }}</div>
+                </div>
+                
+                <button type="submit" class="btn btn-success mt-3">{{ form.submit.label }}</button>
+            </form>
+            
+            <p class="mt-4">
+                <a href="{{ url_for('manage.manage_dashboard') }}" class="btn btn-secondary btn-sm">Voltar</a>
+            </p>
+        </div>
+    </div>
+{% endblock %}

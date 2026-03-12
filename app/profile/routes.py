@@ -10,36 +10,22 @@ footer = {'ano': Config.ANO_ATUAL, 'versao': Config.VERSAO_APP}
 @bp.route('/profile')
 @login_required
 def view_profile():
-    """Exibe o perfil do jogador logado."""
     from app.models import Jogador
     jogador = Jogador.query.get(current_user.id)
 
-    if jogador.check_level_up():
-        from app import db
-        db.session.add(jogador)
-        db.session.commit()
-
     if jogador is None:
-        # Se o jogador foi deletado por algum motivo, desloga
         from flask_login import logout_user
         logout_user()
         return redirect(url_for('auth.login'))
     
-    # --- NOVO: RANKING DE REGIÕES ---
     rank_regioes = Regiao.query.order_by(
-        # 1. Ordem principal: Índice de Desenvolvimento (do maior para o menor)
         Regiao.indice_desenvolvimento.desc(),
-        # 2. Desempate: Índice de Educação (do maior para o menor)
         Regiao.indice_educacao.desc(),
-        # 3. Desempate secundário: Índice de Saúde (do maior para o menor)
         Regiao.indice_saude.desc()
     ).all()
 
-    # --- NOVO: RANKING DE JOGADORES ---
     rank_jogadores = Jogador.query.order_by(
-        # 1. Ordem principal: Experiência Geral (do maior para o menor)
         Jogador.experiencia.desc(),
-        # 2. Desempate: Saldo de Dinheiro (do maior para o menor)
         Jogador.dinheiro.desc()
     ).all()
     

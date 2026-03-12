@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+
+{% block content %}
+    <h1 class="mt-4"><i class="fas fa-flask me-2"></i> Criar Nova Receita de Produção</h1>
+    
+    <div class="row">
+        <div class="col-md-12">
+            <p>Define a conversão de um item de entrada em um item de saída, com custos associados.</p>
+            
+            <form method="POST" action="{{ url_for('manage.create_recipe') }}">
+                {{ form.hidden_tag() }}
+                <div class="row">
+                    <h4 class="mt-4">Identificação e Tipo</h4>
+                    <div class="col-md-6">{{ wtf.form_field(form.name) }}</div>
+                    <div class="col-md-6">{{ wtf.form_field(form.factory_type) }}</div>
+                <hr>
+                    <h4 class="mt-4">Inputs (O que Consome)</h4>
+                    <div class="col-md-6">{{ wtf.form_field(form.input_item_type) }}</div>
+                    <div class="col-md-6">{{ wtf.form_field(form.input_quantity) }}</div>
+                <hr>
+                    <h4 class="mt-4">Outputs (O que Produz)</h4>
+                    <div class="col-md-6">{{ wtf.form_field(form.output_item_type) }}</div>
+                    <div class="col-md-6">{{ wtf.form_field(form.output_quantity) }}</div>
+                <hr>
+                    <h4 class="mt-4">Custos e Requisitos</h4>
+                    <div class="col-md-3">{{ wtf.form_field(form.energy_cost) }}</div>
+                    <div class="col-md-3">{{ wtf.form_field(form.production_time_minutes) }}</div>
+                    <div class="col-md-3">{{ wtf.form_field(form.warehouse_specialization_req) }}</div>
+                </div>
+                <hr>
+                <button type="submit" class="btn btn-primary">{{ form.submit.label }}</button>
+            </form>
+            <p class="mt-4">
+                <a href="{{ url_for('manage.manage_dashboard') }}" class="btn btn-secondary">Voltar ao Painel</a>
+            </p>
+        </div>
+    </div>
+{% endblock %}

@@ -23,15 +23,12 @@ def work_dashboard():
         flash("Você precisa estar em uma localização para acessar o trabalho.", 'danger')
         return redirect(url_for('profile.view_profile'))
         
-    # Busca todas as empresas (estatais e privadas) na localização
     empresas_na_regiao = regiao.empresas.all()
     
-    # Prepara as opções de energia (de 10 em 10, limitado ao jogador)
     energia_disponivel = jogador.energia
     energia_int = int(energia_disponivel)
     opcoes_energia = list(range(10, energia_int + 1, 10))
     
-    # Exemplo: Simular XP de Outras Fábricas (para o seu layout de referência)
     fabricas_estatais = [e for e in empresas_na_regiao if e.tipo == 'estatal']
     fabricas_privadas = [e for e in empresas_na_regiao if e.tipo == 'privada']
 
@@ -39,10 +36,32 @@ def work_dashboard():
     farm_slots_max = current_app.config['FARMING_FIELD_MAX_SLOTS']
     farm_max_uses = current_app.config['FARMING_FIELD_MAX_USES']
     
-    # --- NOVO: Instanciar Formulários e obter variáveis de config ---
     form_empresa = OpenCompanyForm()
     form_campo = OpenCampoForm()
-    GROW_TIME_MINUTES = current_app.config['FARMING_GROW_TIME_MINUTES'] # <-- Novo
+    GROW_TIME_MINUTES = current_app.config['FARMING_GROW_TIME_MINUTES']
+
+    custos_empresa = jogador.get_open_company_cost()
+    residente = regiao.id == jogador.regiao_residencia_id
+    limite_empresas_atingido = len(jogador.empresas_proprias) >= jogador.get_max_empresas()
+    
+    pode_abrir_empresa = (
+        jogador.dinheiro >= custos_empresa['money'] and 
+        jogador.gold >= custos_empresa['gold'] and
+        jogador.nivel >= 5 and
+        residente and 
+        not limite_empresas_atingido
+    )
+
+    custos_campo = jogador.get_open_campo_cost()
+    limite_campos_atingido = len(jogador.campos_proprios) >= jogador.get_max_campos()
+    
+    pode_comprar_campo = (
+        jogador.dinheiro >= custos_campo['money'] and 
+        jogador.gold >= custos_campo['gold'] and 
+        jogador.nivel >= 2 and 
+        residente and
+        not limite_campos_atingido
+    )
 
     return render_template('work/work_dashboard.html',
                            title=f'Trabalho em {regiao.nome}',
@@ -60,4 +79,11 @@ def work_dashboard():
                            form_empresa=form_empresa, 
                            form_campo=form_campo,
                            GROW_TIME_MINUTES=GROW_TIME_MINUTES,
+                           custos_empresa=custos_empresa,
+                           custos_campo=custos_campo,
+                           residente=residente,
+                           limite_empresas_atingido=limite_empresas_atingido,
+                           limite_campos_atingido=limite_campos_atingido,
+                           pode_abrir_empresa=pode_abrir_empresa,
+                           pode_comprar_campo=pode_comprar_campo,
                            **footer)

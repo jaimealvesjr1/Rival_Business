@@ -2,11 +2,11 @@ from flask import render_template, redirect, url_for, flash
 from flask_login import login_required, current_user
 from app import db
 from app.manage import bp
-from app.manage.forms import RegionForm, PlayerForm, CompanyAdminForm, PlayerEditForm, RegionEditForm, CompanyEditForm
+from app.manage.forms import (RegionForm, PlayerForm, CompanyAdminForm, PlayerEditForm, RegionEditForm, CompanyEditForm, TipoVeiculoForm, ProductionRecipeForm)
 from werkzeug.security import generate_password_hash
 
 from app.manage.forms import RegionForm, PlayerForm, CompanyAdminForm
-from app.models import Regiao, Jogador, Empresa, TipoVeiculo
+from app.models import Regiao, Jogador, Empresa, TipoVeiculo, ProductionRecipe, Veiculo
 from functools import wraps
 from config import Config
 
@@ -30,13 +30,16 @@ def manage_dashboard():
     regioes = Regiao.query.all()
     empresas = Empresa.query.all()
     tipos_veiculos = TipoVeiculo.query.all()
+    production_recipes = ProductionRecipe.query.all()
     
     return render_template('manage/manage_dashboard.html',
                            title='Painel de Gestão',
                            jogadores=jogadores,
                            regioes=regioes,
                            empresas=empresas,
-                           tipos_veiculos=tipos_veiculos, **footer)
+                           tipos_veiculos=tipos_veiculos,
+                           production_recipes=production_recipes,
+                           **footer)
 
 @bp.route('/create_region', methods=['GET', 'POST'])
 @admin_required 
@@ -169,7 +172,8 @@ def create_player():
 @admin_required
 def edit_player(player_id):
     jogador = Jogador.query.get_or_404(player_id)
-    form = PlayerEditForm(obj=jogador) # Carrega os dados do jogador no formulário
+    form = PlayerEditForm(obj=jogador)
+    veiculos_do_jogador = Veiculo.query.filter_by(armazem_id=jogador.armazem.id).all()
 
     if form.validate_on_submit():
         try:
@@ -192,7 +196,12 @@ def edit_player(player_id):
             flash(f'Erro ao editar jogador: {e}', 'danger')
             
     # Para o GET, renderiza o formulário com os dados do jogador
-    return render_template('manage/edit_player.html', title=f'Editar {jogador.username}', form=form, jogador=jogador, **footer)
+    return render_template('manage/edit_player.html', 
+                           title=f'Editar {jogador.username}', 
+                           form=form, 
+                           jogador=jogador, 
+                           veiculos_do_jogador=veiculos_do_jogador,
+                           **footer)
 
 @bp.route('/create_company', methods=['GET', 'POST'])
 @admin_required
@@ -266,7 +275,10 @@ def delete_data(model_name, id):
     model_map = {
         'jogador': Jogador,
         'regiao': Regiao,
-        'empresa': Empresa
+        'empresa': Empresa,
+        'production_recipe': ProductionRecipe,
+        'tipo_veiculo': TipoVeiculo,
+        'veiculo': Veiculo
     }
 
     Model = model_map.get(model_name)
@@ -288,3 +300,109 @@ def delete_data(model_name, id):
         flash(f'Erro ao excluir {model_name}: {e}', 'danger')
         
     return redirect(url_for('manage.manage_dashboard'))
+
+@bp.route('/create_recipe', methods=['GET', 'POST'])
+@admin_required
+def create_recipe():
+    form = ProductionRecipeForm()
+    
+    if form.validate_on_submit():
+        try:
+            nova_receita = ProductionRecipe(
+                name=form.name.data,
+                factory_type=form.factory_type.data,
+                input_item_type=form.input_item_type.data,
+                input_quantity=form.input_quantity.data,
+                output_item_type=form.output_item_type.data,
+                output_quantity=form.output_quantity.data,
+                energy_cost=form.energy_cost.data,
+                production_time_minutes=form.production_time_minutes.data,
+                warehouse_specialization_req=form.warehouse_specialization_req.data
+            )
+            
+            db.session.add(nova_receita)
+            db.session.commit()
+            
+            flash(f'Receita de Produção "{nova_receita.nome}" criada com sucesso!', 'success')
+            return redirect(url_for('manage.manage_dashboard'))
+        
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao criar receita de produção: {e}', 'danger')
+            
+    return render_template('manage/create_recipe.html', title='Criar Nova Receita de Produção', form=form, **footer)
+
+@bp.route('/edit_recipe/<int:recipe_id>', methods=['GET', 'POST'])
+@admin_required
+def edit_recipe(recipe_id):
+    from app.models import ProductionRecipe
+    from app.manage.forms import ProductionRecipeForm
+    
+    receita = ProductionRecipe.query.get_or_404(recipe_id)
+    form = ProductionRecipeForm(obj=receita) 
+
+    if form.validate_on_submit():
+        try:
+            form.populate_obj(receita)
+            db.session.add(receita)
+            db.session.commit()
+            
+            flash(f'Receita "{receita.name}" atualizada com sucesso!', 'success')
+            return redirect(url_for('manage.manage_dashboard'))
+        
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao editar receita: {e}', 'danger')
+            
+    return render_template('manage/edit_recipe.html', title=f'Editar {receita.name}', form=form, receita=receita, **footer)
+
+@bp.route('/create_vehicle_type', methods=['GET', 'POST'])
+@admin_required
+def create_vehicle_type():
+    from app.models import TipoVeiculo
+    form = TipoVeiculoForm()
+    
+    if form.validate_on_submit():
+        try:
+            novo_tipo = TipoVeiculo(
+                tipo_veiculo=form.tipo_veiculo.data,
+                nome_display=form.nome_display.data,
+                capacidade=form.capacidade.data,
+                velocidade=form.velocidade.data,
+                custo_tonelada_km=form.custo_tonelada_km.data,
+                validade_dias=form.validade_dias.data,
+                custo_ferro=form.custo_ferro.data,
+                custo_money=form.custo_money.data,
+                custo_gold=form.custo_gold.data,
+                nivel_especializacao_req=form.nivel_especializacao_req.data
+            )
+            db.session.add(novo_tipo)
+            db.session.commit()
+            flash(f"Modelo de Veículo '{novo_tipo.nome_display}' criado com sucesso!", 'success')
+            return redirect(url_for('manage.manage_dashboard'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao criar modelo: {e}', 'danger')
+            
+    return render_template('manage/create_vehicle_type.html', title='Criar Modelo de Veículo', form=form, **footer)
+
+
+@bp.route('/edit_vehicle_type/<int:type_id>', methods=['GET', 'POST'])
+@admin_required
+def edit_vehicle_type(type_id):
+    from app.models import TipoVeiculo
+    tipo = TipoVeiculo.query.get_or_404(type_id)
+    form = TipoVeiculoForm(obj=tipo)
+    
+    if form.validate_on_submit():
+        try:
+            form.populate_obj(tipo)
+            db.session.add(tipo)
+            db.session.commit()
+            flash(f"Modelo '{tipo.nome_display}' atualizado com sucesso!", 'success')
+            return redirect(url_for('manage.manage_dashboard'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao editar modelo: {e}', 'danger')
+            
+    return render_template('manage/edit_vehicle_type.html', title=f'Editar {tipo.nome_display}', form=form, tipo=tipo, **footer)

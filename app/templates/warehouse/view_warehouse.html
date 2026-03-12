@@ -100,7 +100,7 @@
                             <form method="POST" action="{{ url_for('warehouse.start_upgrade', type=type) }}">
                                 <button type="submit" 
                                         class="btn btn-sm btn-success mt-2 w-100" 
-                                        {% if not pode_pagar %}disabled{% endif %}>
+                                        {% if not pode_pagar %}disabled{% endif %} {% if treino_em_andamento %}disabled{% endif %}>
                                     <i class="fas fa-level-up-alt me-1"></i> Iniciar Melhoria
                                 </button>
                             </form>

@@ -2,38 +2,91 @@
 {% import "bootstrap/wtf.html" as wtf %}
 
 {% block content %}
-    <h1 class="mt-4">Editar Jogador: {{ jogador.username }}</h1>
+<h1 class="mt-4"><i class="fas fa-user-edit me-2"></i> Editar Jogador: {{ jogador.username }}</h1>
+
+<ul class="nav nav-tabs" id="playerEditTabs" role="tablist">
+    <li class="nav-item">
+        <a class="nav-link active" id="details-tab" data-bs-toggle="tab" href="#details-panel" role="tab"><i class="fas fa-list me-1"></i> Detalhes & Status</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" id="vehicles-tab" data-bs-toggle="tab" href="#vehicles-panel" role="tab"><i class="fas fa-truck-moving me-1"></i> Frota ({{ veiculos_do_jogador|length }})</a>
+    </li>
+</ul>
+
+<div class="tab-content" id="playerEditTabsContent">
     
-    <div class="row">
-        <div class="col-md-12">
-            <p>Ajustando dados e recursos de <strong>{{ jogador.id }} - {{ jogador.username }}</strong>.</p>
-            
-            <form method="POST" action="{{ url_for('manage.edit_player', player_id=jogador.id) }}">
-                {{ form.hidden_tag() }}
-                <div class="row">
-                    <h4 class="mt-4">Segurança e Login</h4>
-                    <div class="col-md-6">{{ wtf.form_field(form.username) }}</div>
-                    <div class="col-md-6">{{ wtf.form_field(form.new_password) }}</div>
-                    {{ wtf.form_field(form.is_admin) }}
-                <hr>
-                    <h4 class="mt-4">Recursos e Status</h4>
-                    <div class="col-md-1">{{ wtf.form_field(form.nivel) }}</div>
-                    <div class="col-md-2">{{ wtf.form_field(form.dinheiro) }}</div>
-                    <div class="col-md-2">{{ wtf.form_field(form.gold) }}</div>
-                    <div class="col-md-2">{{ wtf.form_field(form.energia) }}</div>
-                    <div class="col-md-2">{{ wtf.form_field(form.experiencia) }}</div>
-                    <div class="col-md-3">{{ wtf.form_field(form.experiencia_trabalho) }}</div>
-                <hr>
-                    <h4 class="mt-4">Localização</h4>
-                    <div class="col-md-6">{{ wtf.form_field(form.regiao_residencia_id) }}</div>
-                    <div class="col-md-6">{{ wtf.form_field(form.regiao_atual_id) }}</div>
-                </div>
-                <button type="submit" class="btn btn-success mt-3">{{ form.submit.label }}</button>
-            </form>
-            
-            <p class="mt-4">
-                <a href="{{ url_for('manage.manage_dashboard') }}" class="btn btn-secondary btn-sm">Voltar</a>
-            </p>
+    {# ABA 1: DETALHES E STATUS #}
+    <div class="tab-pane fade show active" id="details-panel" role="tabpanel">
+        <div class="row">
+            <div class="col-md-12">
+                <p class="lead mt-4">Ajustando dados e recursos de <strong>{{ jogador.id }} - {{ jogador.username }}</strong>.</p>
+                <form method="POST" action="{{ url_for('manage.edit_player', player_id=jogador.id) }}">
+                    {{ form.hidden_tag() }}
+                    <div class="row">
+                        <h4 class="mt-4">Segurança e Login</h4>
+                        <div class="col-md-6">{{ wtf.form_field(form.username) }}</div>
+                        <div class="col-md-6">{{ wtf.form_field(form.new_password) }}</div>
+                        {{ wtf.form_field(form.is_admin) }}
+                    <hr>
+                        <h4 class="mt-4">Recursos e Status</h4>
+                        <div class="col-md-1">{{ wtf.form_field(form.nivel) }}</div>
+                        <div class="col-md-2">{{ wtf.form_field(form.dinheiro) }}</div>
+                        <div class="col-md-2">{{ wtf.form_field(form.gold) }}</div>
+                        <div class="col-md-2">{{ wtf.form_field(form.energia) }}</div>
+                        <div class="col-md-2">{{ wtf.form_field(form.experiencia) }}</div>
+                        <div class="col-md-3">{{ wtf.form_field(form.experiencia_trabalho) }}</div>
+                    <hr>
+                        <h4 class="mt-4">Localização</h4>
+                        <div class="col-md-6">{{ wtf.form_field(form.regiao_residencia_id) }}</div>
+                        <div class="col-md-6">{{ wtf.form_field(form.regiao_atual_id) }}</div>
+                    </div>
+                    <button type="submit" class="btn btn-success mt-3">{{ form.submit.label }}</button>
+                </form>
+            </div>
         </div>
     </div>
+
+    {# ABA 2: VEÍCULOS #}
+    <div class="tab-pane fade" id="vehicles-panel" role="tabpanel">
+        <h4 class="mt-4">Frota Ativa do Jogador</h4>
+        {% if veiculos_do_jogador %}
+            <div class="table-responsive">
+                <table class="table table-striped table-sm">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nome</th>
+                            <th>Tipo</th>
+                            <th>Capacidade</th>
+                            <th>Validade (dias)</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for veiculo in veiculos_do_jogador %}
+                        <tr>
+                            <td>{{ veiculo.id }}</td>
+                            <td>{{ veiculo.nome }}</td>
+                            <td>{{ veiculo.tipo_veiculo }}</td>
+                            <td>{{ veiculo.capacidade | int }} t</td>
+                            <td>{{ veiculo.validade_dias }}</td>
+                            <td>
+                                <form method="POST" action="{{ url_for('manage.delete_data', model_name='veiculo', id=veiculo.id) }}" class="d-inline" onsubmit="return confirm('Tem certeza que deseja EXCLUIR o veículo {{ veiculo.nome }}?');">
+                                    <button type="submit" class="btn btn-sm btn-danger">Excluir</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="alert alert-info mt-3">Nenhum veículo encontrado na frota do jogador.</div>
+        {% endif %}
+    </div>
+</div>
+
+<p class="mt-4">
+    <a href="{{ url_for('manage.manage_dashboard') }}" class="btn btn-secondary btn-sm">Voltar</a>
+</p>
 {% endblock %}

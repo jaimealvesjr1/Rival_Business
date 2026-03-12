@@ -171,7 +171,8 @@ def create_app(config_class=Config):
     app.cli.add_command(cli_commands.init_db_command)
 
     with app.app_context():       
-        db.create_all()
+        #db.create_all()
+        pass
     
     # Rota de teste/index (temporária)
     from flask import render_template, redirect, url_for

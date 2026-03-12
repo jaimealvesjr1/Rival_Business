@@ -133,3 +133,65 @@ class CompanyEditForm(FlaskForm):
         # Lista todos os jogadores para definir o proprietário
         # Adiciona uma opção de NULO (0) para empresas estatais
         self.proprietario_id.choices = [(0, 'Estatal/Nenhum')] + [(j.id, f'{j.id}: {j.username}') for j in Jogador.query.all()]
+
+# NOVO: FORMULÁRIO DE RECEITA DE PRODUÇÃO (ProductionRecipeForm)
+
+RESOURCES = [
+    ('ferro', 'Ferro (Matéria-Prima)'),
+    ('milho', 'Milho (Agrícola)'),
+    ('aco', 'Aço (Insumo)'),
+    ('etanol', 'Etanol (Insumo)'),
+    ('componente', 'Componente (Insumo)'),
+    ('maquina', 'Máquina Industrial (Mercadoria)'),
+    ('combustivel', 'Combustível (Mercadoria)')
+]
+
+FACTORY_TYPES = [
+    ('Fundicao', 'Fundição'),
+    ('Linha_Montagem', 'Linha de Montagem'),
+    ('Manufatura_Pesada', 'Manufatura Pesada'),
+    ('Refinaria', 'Refinaria')
+]
+
+class ProductionRecipeForm(FlaskForm):
+    name = StringField('Nome da Receita', validators=[DataRequired(), Length(min=3, max=100)])
+    
+    factory_type = SelectField('Tipo de Fábrica Necessária', 
+                               choices=FACTORY_TYPES,
+                               validators=[DataRequired()])
+    
+    # Input (O que consome)
+    input_item_type = SelectField('Item de Entrada', choices=RESOURCES, validators=[DataRequired()])
+    input_quantity = FloatField('Qtd. de Entrada (por ciclo)', default=1.0, validators=[NumberRange(min=0.01)])
+    
+    # Output (O que produz)
+    output_item_type = SelectField('Item de Saída', choices=RESOURCES, validators=[DataRequired()])
+    output_quantity = FloatField('Qtd. de Saída (por ciclo)', default=1.0, validators=[NumberRange(min=0.01)])
+    
+    # Custos e Requisitos
+    energy_cost = IntegerField('Custo de Energia (por ciclo)', default=10, validators=[NumberRange(min=1)])
+    production_time_minutes = IntegerField('Tempo de Produção (minutos)', default=60, validators=[NumberRange(min=1)])
+    warehouse_specialization_req = IntegerField('Especialização Armazém Mín.', default=1, validators=[NumberRange(min=1)])
+                                    
+    submit = SubmitField('Salvar Receita')
+
+# NOVO: FORMULÁRIO PARA MODELOS DE VEÍCULO (TipoVeiculo)
+class TipoVeiculoForm(FlaskForm):
+    # Campos base
+    tipo_veiculo = StringField('Chave Única (e.g., carreta_nv2)', validators=[DataRequired(), Length(min=3, max=80)])
+    nome_display = StringField('Nome para Exibição (e.g., Carreta Avançada)', validators=[DataRequired(), Length(min=3, max=80)])
+    
+    # Especificações
+    capacidade = FloatField('Capacidade (Toneladas)', validators=[NumberRange(min=1)])
+    velocidade = FloatField('Multiplicador Velocidade (1.0 = Base)', default=1.0, validators=[NumberRange(min=0.1)])
+    custo_tonelada_km = FloatField('Custo/Ton-Km (R$)', validators=[NumberRange(min=0)])
+    validade_dias = IntegerField('Validade (Dias)', validators=[NumberRange(min=1)])
+    
+    # Custos
+    custo_ferro = FloatField('Custo Ferro (ton)', default=0.0, validators=[NumberRange(min=0)])
+    custo_money = FloatField('Custo Dinheiro (R$)', default=0.0, validators=[NumberRange(min=0)])
+    custo_gold = FloatField('Custo Gold (Kg)', default=0.0, validators=[NumberRange(min=0)])
+    
+    nivel_especializacao_req = IntegerField('Nv. Especialização Armazém Req.', default=1, validators=[NumberRange(min=1)])
+    
+    submit = SubmitField('Salvar Modelo')
